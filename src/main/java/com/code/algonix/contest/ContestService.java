@@ -159,7 +159,7 @@ public class ContestService {
     }
     
     @Transactional
-    public void submitSolution(ContestSubmitRequest request, Long userId) {
+    public ContestSubmissionResponse submitSolution(ContestSubmitRequest request, Long userId) {
         Contest contest = contestRepository.findById(request.getContestId())
                 .orElseThrow(() -> new ResourceNotFoundException("Contest not found"));
         
@@ -209,11 +209,23 @@ public class ContestService {
             contestSubmission.setScore(0);
         }
         
-        contestSubmissionRepository.save(contestSubmission);
+        ContestSubmission saved = contestSubmissionRepository.save(contestSubmission);
         
         // Update statistics
         updateContestProblemStats(contestProblem.getId());
         updateParticipantScore(request.getContestId(), userId);
+        
+        // Return response
+        ContestSubmissionResponse response = new ContestSubmissionResponse();
+        response.setSubmissionId(submission.getId());
+        response.setContestSubmissionId(saved.getId());
+        response.setStatus(submission.getStatus().name());
+        response.setIsAccepted(saved.getIsAccepted());
+        response.setScore(saved.getScore());
+        response.setTimeTaken(saved.getTimeTaken());
+        response.setMessage("Submission successful");
+        
+        return response;
     }
     
     public List<ContestStandingsResponse> getContestStandings(Long contestId) {

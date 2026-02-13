@@ -20,6 +20,7 @@ import com.code.algonix.contest.dto.ContestProblemResponse;
 import com.code.algonix.contest.dto.ContestRankingsResponse;
 import com.code.algonix.contest.dto.ContestResponse;
 import com.code.algonix.contest.dto.ContestStandingsResponse;
+import com.code.algonix.contest.dto.ContestSubmissionResponse;
 import com.code.algonix.contest.dto.ContestSubmitRequest;
 import com.code.algonix.contest.dto.CreateContestRequest;
 import com.code.algonix.user.UserEntity;
@@ -86,11 +87,10 @@ public class ContestController {
     @PostMapping("/submit")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Submit solution to contest problem", security = @SecurityRequirement(name = "bearerAuth"))
-    public ResponseEntity<Void> submitSolution(
+    public ResponseEntity<ContestSubmissionResponse> submitSolution(
             @Valid @RequestBody ContestSubmitRequest request,
             @AuthenticationPrincipal UserEntity user) {
-        contestService.submitSolution(request, user.getId());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(contestService.submitSolution(request, user.getId()));
     }
     
     @GetMapping("/{contestId}/standings")
