@@ -1,0 +1,77 @@
+# Logging
+logging.level.com.code.algonix.config.ProblemDataLoader=DEBUG
+logging.level.com.code.algonix.problems.ResourceMonitoringService=DEBUG
+logging.level.com.code.algonix.problems.MultiLanguageExecutionService=DEBUG
+logging.level.root=INFO
+logging.level.com.code.algonix.problems=DEBUG
+
+# Application Settings
+spring.application.name=Algonix
+server.port=8080
+server.address=0.0.0.0
+
+# Database Configuration
+spring.datasource.url=${DATABASE_URL:jdbc:postgresql://localhost:5432/algonix}
+spring.datasource.username=${DATABASE_USERNAME:postgres}
+spring.datasource.password=${DATABASE_PASSWORD:your_password_here}
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.show-sql=false
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+
+# Flyway Migration - O'CHIRILDI
+spring.flyway.enabled=false
+
+# JWT Configuration
+jwt.secret=${JWT_SECRET:2lVo5TcjgTco3dUIwmYEIWcLfeiBR7QgjS9fFyn1Jdg=}
+jwt.access-token-expiration=3600000
+jwt.refresh-token-expiration=604800000
+
+# Email Configuration (Gmail App Password required)
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=${EMAIL_USERNAME:your_email@gmail.com}
+spring.mail.password=${EMAIL_PASSWORD:your_app_password_here}
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+
+# CORS Configuration
+cors.allowed-origins=${CORS_ORIGINS:http://localhost:4200}
+
+# Application URL
+app.frontend.url=${FRONTEND_URL:http://localhost:4200}
+
+# Swagger/OpenAPI
+springdoc.api-docs.enabled=true
+springdoc.swagger-ui.enabled=true
+springdoc.api-docs.path=/v3/api-docs
+springdoc.swagger-ui.path=/swagger-ui.html
+springdoc.swagger-ui.operationsSorter=method
+springdoc.swagger-ui.tagsSorter=alpha
+springdoc.swagger-ui.tryItOutEnabled=true
+
+# Code Execution Settings
+code.execution.timeout-ms=10000
+code.execution.memory-limit=64
+code.execution.max-output-size=1048576
+code.execution.max-file-size=65536
+code.execution.use-native=false
+code.execution.use-judge0=false
+code.execution.use-multi-language=true
+
+# Judge0 API Configuration (not used - using MultiLanguageExecutionService instead)
+# judge0.api.url=https://judge0-ce.p.rapidapi.com
+# judge0.api.key=YOUR_RAPIDAPI_KEY_HERE
+
+# Email Validation (startup'da email config'ni tekshirish)
+email.validation.enabled=${EMAIL_VALIDATION:false}
+
+# OAuth2 - GitHub (Optional - set your own keys)
+spring.security.oauth2.client.registration.github.client-id=${GITHUB_CLIENT_ID:}
+spring.security.oauth2.client.registration.github.client-secret=${GITHUB_CLIENT_SECRET:}
+spring.security.oauth2.client.registration.github.scope=user:email,read:user
+
+# OAuth2 - Google (Optional - set your own keys)
+spring.security.oauth2.client.registration.google.client-id=${GOOGLE_CLIENT_ID:}
+spring.security.oauth2.client.registration.google.client-secret=${GOOGLE_CLIENT_SECRET:}
+spring.security.oauth2.client.registration.google.scope=profile,email
