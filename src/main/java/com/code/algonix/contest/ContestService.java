@@ -516,6 +516,174 @@ public class ContestService {
         response.setRankings(rankings);
         return response;
     }
+    public ContestFinalStandingsResponse getContestFinalStandings(Long contestId, int page, int size) {
+            Contest contest = contestRepository.findById(contestId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Contest not found"));
+
+            // Contest tugaganligini tekshirish
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime endTime = contest.getStartTime().plusSeconds(contest.getDurationSeconds());
+
+            // Barcha ishtirokchilarning natijalarini yangilash
+            updateAllParticipantScores(contestId);
+
+            // Ball bo'yicha tartiblangan ro'yxat
+            List<ContestParticipant> allParticipants = participantRepository.findContestStandings(contestId);
+            assignRanksToParticipants(allParticipants);
+
+            // Pagination
+            int totalParticipants = allParticipants.size();
+            int totalPages = (int) Math.ceil((double) totalParticipants / size);
+            int start = page * size;
+            int end = Math.min(start + size, totalParticipants);
+
+            List<ContestParticipant> pageParticipants = start < totalParticipants
+                    ? allParticipants.subList(start, end)
+                    : new ArrayList<>();
+
+            // Response yaratish
+            ContestFinalStandingsResponse response = new ContestFinalStandingsResponse();
+
+            // Contest info
+            ContestFinalStandingsResponse.ContestInfo contestInfo = new ContestFinalStandingsResponse.ContestInfo();
+            contestInfo.setId("contest-" + contest.getNumber());
+            contestInfo.setTitle(contest.getTitle());
+            contestInfo.setStatus(contest.getStatus().name());
+            contestInfo.setIsFrozen(false);
+            contestInfo.setStartTime(contest.getStartTime());
+            contestInfo.setEndTime(endTime);
+
+            // Problem list
+            List<ContestProblem> problems = contestProblemRepository.findByContestIdOrderByOrderIndexAsc(contestId);
+            List<String> problemList = problems.stream()
+                    .map(ContestProblem::getSymbol)
+                    .collect(Collectors.toList());
+            contestInfo.setProblemList(problemList);
+            response.setContest(contestInfo);
+
+            // Overall stats
+            Map<String, ContestFinalStandingsResponse.ProblemStats> overallStats = new HashMap<>();
+            for (ContestProblem cp : problems) {
+                ContestFinalStandingsResponse.ProblemStats stats = new ContestFinalStandingsResponse.ProblemStats();
+
+                // Barcha submissionlarni olish
+                List<ContestSubmission> allSubmissions = contestSubmissionRepository
+                        .findByContestIdAndContestProblemId(contestId, cp.getId());
+
+                // Solved count - nechta user hal qilgan
+                Set<Long> solvedUsers = allSubmissions.stream()
+                        .filter(ContestSubmission::getIsAccepted)
+                        .map(s -> s.getUser().getId())
+                        .collect(Collectors.toSet());
+                stats.setSolved(solvedUsers.size());
+
+                // Failed count - hal qilmagan lekin uringan userlar
+                Set<Long> attemptedUsers = allSubmissions.stream()
+                        .map(s -> s.getUser().getId())
+                        .collect(Collectors.toSet());
+                stats.setFailed(attemptedUsers.size() - solvedUsers.size());
+
+                // Attempting - hozir ishlayotganlar (contest active bo'lsa)
+                stats.setAttempting(0); // Bu real-time ma'lumot bo'lishi kerak
+
+                // First solve time
+                Optional<ContestSubmission> firstSolve = allSubmissions.stream()
+                        .filter(ContestSubmission::getIsAccepted)
+                        .min(Comparator.comparing(ContestSubmission::getSubmittedAt));
+
+                if (firstSolve.isPresent()) {
+                    long seconds = firstSolve.get().getTimeTaken();
+                    stats.setFirstSolveTime(formatTime(seconds));
+                } else {
+                    stats.setFirstSolveTime(null);
+                }
+
+                overallStats.put(cp.getSymbol(), stats);
+            }
+            response.setOverallStats(overallStats);
+
+            // Standings
+            List<ContestFinalStandingsResponse.StandingEntry> standings = new ArrayList<>();
+            for (ContestParticipant participant : pageParticipants) {
+                ContestFinalStandingsResponse.StandingEntry entry = new ContestFinalStandingsResponse.StandingEntry();
+                entry.setRank(participant.getRank());
+                entry.setUserId(participant.getUser().getId());
+                entry.setUsername(participant.getUser().getUsername());
+                entry.setAvatarUrl(participant.getUser().getAvatarUrl());
+                entry.setSolvedCount(participant.getProblemsSolved());
+                entry.setTotalScore(participant.getScore());
+                entry.setTotalPenalty(participant.getTotalPenalty());
+
+                // Problem results
+                List<ContestFinalStandingsResponse.ProblemResult> problemResults = new ArrayList<>();
+
+                // First blood tracker
+                Map<Long, Long> firstBloodMap = new HashMap<>();
+                for (ContestProblem cp : problems) {
+                    List<ContestSubmission> allSubs = contestSubmissionRepository
+                            .findByContestIdAndContestProblemId(contestId, cp.getId());
+                    Optional<ContestSubmission> firstSolve = allSubs.stream()
+                            .filter(ContestSubmission::getIsAccepted)
+                            .min(Comparator.comparing(ContestSubmission::getSubmittedAt));
+                    if (firstSolve.isPresent()) {
+                        firstBloodMap.put(cp.getId(), firstSolve.get().getUser().getId());
+                    }
+                }
+
+                for (ContestProblem cp : problems) {
+                    ContestFinalStandingsResponse.ProblemResult pr = new ContestFinalStandingsResponse.ProblemResult();
+                    pr.setId(cp.getSymbol());
+
+                    List<ContestSubmission> userSubmissions = contestSubmissionRepository
+                            .findUserProblemSubmissions(contestId, participant.getUser().getId(), cp.getId());
+
+                    pr.setAttempts(userSubmissions.size());
+
+                    Optional<ContestSubmission> accepted = userSubmissions.stream()
+                            .filter(ContestSubmission::getIsAccepted)
+                            .findFirst();
+
+                    if (accepted.isPresent()) {
+                        pr.setStatus("solved");
+                        pr.setTime(formatTime(accepted.get().getTimeTaken()));
+
+                        // First blood check
+                        Long firstBloodUserId = firstBloodMap.get(cp.getId());
+                        pr.setIsFirstBlood(firstBloodUserId != null &&
+                                firstBloodUserId.equals(participant.getUser().getId()));
+                    } else if (!userSubmissions.isEmpty()) {
+                        pr.setStatus("failed");
+                        pr.setTime(null);
+                        pr.setIsFirstBlood(false);
+                    } else {
+                        pr.setStatus("unattempted");
+                        pr.setTime(null);
+                        pr.setIsFirstBlood(false);
+                    }
+
+                    problemResults.add(pr);
+                }
+
+                entry.setProblems(problemResults);
+                standings.add(entry);
+            }
+            response.setStandings(standings);
+
+            // Pagination
+            ContestFinalStandingsResponse.PaginationInfo pagination = new ContestFinalStandingsResponse.PaginationInfo();
+            pagination.setCurrentPage(page);
+            pagination.setTotalPages(totalPages);
+            pagination.setTotalParticipants(totalParticipants);
+            response.setPagination(pagination);
+
+            return response;
+        }
+
+        private String formatTime(long seconds) {
+            long hours = seconds / 3600;
+            long minutes = (seconds % 3600) / 60;
+            return String.format("%02d:%02d", hours, minutes);
+        }
     
     public List<ContestParticipantResponse> getContestParticipants(Long contestId) {
         Contest contest = contestRepository.findById(contestId)
@@ -694,5 +862,171 @@ public class ContestService {
         response.setTotalRating(totalRating);
         
         return response;
+    }
+    
+    public ContestFinalStandingsResponse getContestFinalStandings(Long contestId, int page, int size) {
+        Contest contest = contestRepository.findById(contestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contest not found"));
+        
+        // Barcha ishtirokchilarning natijalarini yangilash
+        updateAllParticipantScores(contestId);
+        
+        // Ball bo'yicha tartiblangan ro'yxat
+        List<ContestParticipant> allParticipants = participantRepository.findContestStandings(contestId);
+        assignRanksToParticipants(allParticipants);
+        
+        // Pagination
+        int totalParticipants = allParticipants.size();
+        int totalPages = (int) Math.ceil((double) totalParticipants / size);
+        int start = page * size;
+        int end = Math.min(start + size, totalParticipants);
+        
+        List<ContestParticipant> pageParticipants = start < totalParticipants 
+                ? allParticipants.subList(start, end) 
+                : new ArrayList<>();
+        
+        // Response yaratish
+        ContestFinalStandingsResponse response = new ContestFinalStandingsResponse();
+        
+        // Contest info
+        LocalDateTime endTime = contest.getStartTime().plusSeconds(contest.getDurationSeconds());
+        ContestFinalStandingsResponse.ContestInfo contestInfo = new ContestFinalStandingsResponse.ContestInfo();
+        contestInfo.setId("contest-" + contest.getNumber());
+        contestInfo.setTitle(contest.getTitle());
+        contestInfo.setStatus(contest.getStatus().name());
+        contestInfo.setIsFrozen(false);
+        contestInfo.setStartTime(contest.getStartTime());
+        contestInfo.setEndTime(endTime);
+        
+        // Problem list
+        List<ContestProblem> problems = contestProblemRepository.findByContestIdOrderByOrderIndexAsc(contestId);
+        List<String> problemList = problems.stream()
+                .map(ContestProblem::getSymbol)
+                .collect(Collectors.toList());
+        contestInfo.setProblemList(problemList);
+        response.setContest(contestInfo);
+        
+        // Overall stats
+        Map<String, ContestFinalStandingsResponse.ProblemStats> overallStats = new HashMap<>();
+        for (ContestProblem cp : problems) {
+            ContestFinalStandingsResponse.ProblemStats stats = new ContestFinalStandingsResponse.ProblemStats();
+            
+            // Barcha submissionlarni olish
+            List<ContestSubmission> allSubmissions = contestSubmissionRepository
+                    .findByContestIdAndContestProblemId(contestId, cp.getId());
+            
+            // Solved count - nechta user hal qilgan
+            Set<Long> solvedUsers = allSubmissions.stream()
+                    .filter(ContestSubmission::getIsAccepted)
+                    .map(s -> s.getUser().getId())
+                    .collect(Collectors.toSet());
+            stats.setSolved(solvedUsers.size());
+            
+            // Failed count - hal qilmagan lekin uringan userlar
+            Set<Long> attemptedUsers = allSubmissions.stream()
+                    .map(s -> s.getUser().getId())
+                    .collect(Collectors.toSet());
+            stats.setFailed(attemptedUsers.size() - solvedUsers.size());
+            
+            // Attempting - hozir ishlayotganlar (contest active bo'lsa)
+            stats.setAttempting(0);
+            
+            // First solve time
+            Optional<ContestSubmission> firstSolve = allSubmissions.stream()
+                    .filter(ContestSubmission::getIsAccepted)
+                    .min(Comparator.comparing(ContestSubmission::getSubmittedAt));
+            
+            if (firstSolve.isPresent()) {
+                long seconds = firstSolve.get().getTimeTaken();
+                stats.setFirstSolveTime(formatTime(seconds));
+            } else {
+                stats.setFirstSolveTime(null);
+            }
+            
+            overallStats.put(cp.getSymbol(), stats);
+        }
+        response.setOverallStats(overallStats);
+        
+        // First blood tracker
+        Map<Long, Long> firstBloodMap = new HashMap<>();
+        for (ContestProblem cp : problems) {
+            List<ContestSubmission> allSubs = contestSubmissionRepository
+                    .findByContestIdAndContestProblemId(contestId, cp.getId());
+            Optional<ContestSubmission> firstSolve = allSubs.stream()
+                    .filter(ContestSubmission::getIsAccepted)
+                    .min(Comparator.comparing(ContestSubmission::getSubmittedAt));
+            if (firstSolve.isPresent()) {
+                firstBloodMap.put(cp.getId(), firstSolve.get().getUser().getId());
+            }
+        }
+        
+        // Standings
+        List<ContestFinalStandingsResponse.StandingEntry> standings = new ArrayList<>();
+        for (ContestParticipant participant : pageParticipants) {
+            ContestFinalStandingsResponse.StandingEntry entry = new ContestFinalStandingsResponse.StandingEntry();
+            entry.setRank(participant.getRank());
+            entry.setUserId(participant.getUser().getId());
+            entry.setUsername(participant.getUser().getUsername());
+            entry.setAvatarUrl(participant.getUser().getAvatarUrl());
+            entry.setSolvedCount(participant.getProblemsSolved());
+            entry.setTotalScore(participant.getScore());
+            entry.setTotalPenalty(participant.getTotalPenalty());
+            
+            // Problem results
+            List<ContestFinalStandingsResponse.ProblemResult> problemResults = new ArrayList<>();
+            
+            for (ContestProblem cp : problems) {
+                ContestFinalStandingsResponse.ProblemResult pr = new ContestFinalStandingsResponse.ProblemResult();
+                pr.setId(cp.getSymbol());
+                
+                List<ContestSubmission> userSubmissions = contestSubmissionRepository
+                        .findUserProblemSubmissions(contestId, participant.getUser().getId(), cp.getId());
+                
+                pr.setAttempts(userSubmissions.size());
+                
+                Optional<ContestSubmission> accepted = userSubmissions.stream()
+                        .filter(ContestSubmission::getIsAccepted)
+                        .findFirst();
+                
+                if (accepted.isPresent()) {
+                    pr.setStatus("solved");
+                    pr.setTime(formatTime(accepted.get().getTimeTaken()));
+                    
+                    // First blood check
+                    Long firstBloodUserId = firstBloodMap.get(cp.getId());
+                    pr.setIsFirstBlood(firstBloodUserId != null && 
+                            firstBloodUserId.equals(participant.getUser().getId()));
+                } else if (!userSubmissions.isEmpty()) {
+                    pr.setStatus("failed");
+                    pr.setTime(null);
+                    pr.setIsFirstBlood(false);
+                } else {
+                    pr.setStatus("unattempted");
+                    pr.setTime(null);
+                    pr.setIsFirstBlood(false);
+                }
+                
+                problemResults.add(pr);
+            }
+            
+            entry.setProblems(problemResults);
+            standings.add(entry);
+        }
+        response.setStandings(standings);
+        
+        // Pagination
+        ContestFinalStandingsResponse.PaginationInfo pagination = new ContestFinalStandingsResponse.PaginationInfo();
+        pagination.setCurrentPage(page);
+        pagination.setTotalPages(totalPages);
+        pagination.setTotalParticipants(totalParticipants);
+        response.setPagination(pagination);
+        
+        return response;
+    }
+    
+    private String formatTime(long seconds) {
+        long hours = seconds / 3600;
+        long minutes = (seconds % 3600) / 60;
+        return String.format("%02d:%02d", hours, minutes);
     }
 }

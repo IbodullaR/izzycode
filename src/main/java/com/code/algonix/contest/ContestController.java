@@ -127,4 +127,13 @@ public class ContestController {
     public ResponseEntity<ContestFinalResultsResponse> finalizeContestWithResults(@PathVariable Long contestId) {
         return ResponseEntity.ok(contestService.finalizeContestWithResults(contestId));
     }
+    
+    @GetMapping("/{contestId}/final-standings")
+    @Operation(summary = "Get contest final standings with detailed statistics")
+    public ResponseEntity<ContestFinalStandingsResponse> getContestFinalStandings(
+            @PathVariable Long contestId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size) {
+        return ResponseEntity.ok(contestService.getContestFinalStandings(contestId, page, size));
+    }
 }

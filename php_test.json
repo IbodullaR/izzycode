@@ -1,4 +1,0 @@
-{
-  "code": "class Solution { public function arraySum($nums) { return array_sum($nums); } }",
-  "language": "php"
-}
