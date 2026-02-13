@@ -14,9 +14,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.code.algonix.contest.dto.ContestFinalResultsResponse;
-import com.code.algonix.contest.dto.ContestRankingsResponse;
+import com.code.algonix.contest.dto.ContestFinalStandingsResponse;
 import com.code.algonix.contest.dto.ContestParticipantResponse;
 import com.code.algonix.contest.dto.ContestProblemResponse;
+import com.code.algonix.contest.dto.ContestRankingsResponse;
 import com.code.algonix.contest.dto.ContestResponse;
 import com.code.algonix.contest.dto.ContestStandingsResponse;
 import com.code.algonix.contest.dto.ContestSubmitRequest;
