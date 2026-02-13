@@ -215,15 +215,47 @@ public class ContestService {
         updateContestProblemStats(contestProblem.getId());
         updateParticipantScore(request.getContestId(), userId);
         
-        // Return response
+        // Build detailed response with test results
         ContestSubmissionResponse response = new ContestSubmissionResponse();
         response.setSubmissionId(submission.getId());
         response.setContestSubmissionId(saved.getId());
+        response.setUserId(userId);
+        response.setProblemId(request.getProblemId());
+        response.setCode(request.getCode());
+        response.setLanguage(request.getLanguage());
         response.setStatus(submission.getStatus().name());
         response.setIsAccepted(saved.getIsAccepted());
         response.setScore(saved.getScore());
         response.setTimeTaken(saved.getTimeTaken());
-        response.setMessage("Submission successful");
+        response.setSubmittedAt(saved.getSubmittedAt());
+        response.setJudgedAt(submission.getJudgedAt());
+        
+        // Map test results
+        List<ContestSubmissionResponse.TestResult> testResults = submission.getTestResults().stream()
+                .map(tr -> {
+                    ContestSubmissionResponse.TestResult result = new ContestSubmissionResponse.TestResult();
+                    result.setTestCaseId(tr.getTestCase().getId());
+                    result.setStatus(tr.getStatus().name());
+                    result.setRuntime(tr.getRuntime() != null ? tr.getRuntime().longValue() : 0L);
+                    result.setMemory(tr.getMemory());
+                    result.setInput(tr.getTestCase().getInput());
+                    result.setExpectedOutput(tr.getTestCase().getExpectedOutput());
+                    result.setActualOutput(tr.getActualOutput());
+                    result.setErrorMessage(tr.getErrorMessage());
+                    return result;
+                })
+                .collect(Collectors.toList());
+        response.setTestResults(testResults);
+        
+        // Overall stats
+        ContestSubmissionResponse.OverallStats stats = new ContestSubmissionResponse.OverallStats();
+        stats.setTotalTestCases(submission.getTotalTestCases());
+        stats.setPassedTestCases(submission.getPassedTestCases());
+        stats.setRuntime(submission.getRuntime() != null ? submission.getRuntime().longValue() : 0L);
+        stats.setRuntimePercentile(submission.getRuntimePercentile());
+        stats.setMemory(submission.getMemory());
+        stats.setMemoryPercentile(submission.getMemoryPercentile());
+        response.setOverallStats(stats);
         
         return response;
     }
