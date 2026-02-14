@@ -706,7 +706,12 @@ public class ContestService {
         
         // Determine status for user
         String status = contest.getStatus().name().toLowerCase();
-        if (userId != null && participantRepository.existsByContestIdAndUserId(contest.getId(), userId)) {
+        
+        // Agar contest tugagan bo'lsa, "finished" ko'rsatamiz
+        // Agar user registered bo'lsa va contest hali tugamagan bo'lsa, "registered" ko'rsatamiz
+        if (contest.getStatus() == Contest.ContestStatus.FINISHED) {
+            status = "finished";
+        } else if (userId != null && participantRepository.existsByContestIdAndUserId(contest.getId(), userId)) {
             status = "registered";
         }
         response.setStatus(status);

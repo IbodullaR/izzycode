@@ -213,4 +213,92 @@ public class SubmissionService {
                 .judgedAt(submission.getJudgedAt())
                 .build();
     }
+    
+    public com.code.algonix.problems.dto.SubmissionsListResponse getSubmissionsList(
+            String type, Long problemId, Long userId, int page, int size) {
+        
+        List<Submission> allSubmissions;
+        
+        if ("ME".equalsIgnoreCase(type) && userId != null) {
+            // Faqat o'zining submissionlari
+            if (problemId != null) {
+                allSubmissions = submissionRepository
+                        .findByUserIdAndProblemIdOrderBySubmittedAtDesc(userId, problemId);
+            } else {
+                allSubmissions = submissionRepository
+                        .findByUserIdOrderBySubmittedAtDesc(userId);
+            }
+        } else {
+            // Barcha submissionlar
+            if (problemId != null) {
+                allSubmissions = submissionRepository
+                        .findByProblemIdOrderBySubmittedAtDesc(problemId);
+            } else {
+                allSubmissions = submissionRepository
+                        .findAllByOrderBySubmittedAtDesc();
+            }
+        }
+        
+        // Pagination
+        long totalElements = allSubmissions.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int start = page * size;
+        int end = Math.min(start + size, allSubmissions.size());
+        
+        List<Submission> pageSubmissions = start < allSubmissions.size()
+                ? allSubmissions.subList(start, end)
+                : new ArrayList<>();
+        
+        // Map to response
+        List<com.code.algonix.problems.dto.SubmissionsListResponse.SubmissionEntry> entries = 
+                pageSubmissions.stream()
+                .map(s -> {
+                    com.code.algonix.problems.dto.SubmissionsListResponse.SubmissionEntry entry = 
+                            new com.code.algonix.problems.dto.SubmissionsListResponse.SubmissionEntry();
+                    
+                    entry.setId(s.getId());
+                    entry.setUserId(s.getUser().getId());
+                    entry.setUsername(s.getUser().getUsername());
+                    entry.setProblemId(s.getProblem().getId());
+                    entry.setProblemTitle(s.getProblem().getTitle());
+                    entry.setLanguage(s.getLanguage());
+                    entry.setStatus(s.getStatus().name());
+                    
+                    // Runtime and memory
+                    if (s.getRuntime() != null && s.getRuntime() > 0) {
+                        entry.setRuntime(s.getRuntime() + "ms");
+                    } else {
+                        entry.setRuntime("—");
+                    }
+                    
+                    if (s.getMemory() != null && s.getMemory() > 0) {
+                        entry.setMemory(String.format("%.2fMB", s.getMemory()));
+                    } else {
+                        entry.setMemory("—");
+                    }
+                    
+                    entry.setSubmittedAt(s.getSubmittedAt());
+                    
+                    return entry;
+                })
+                .collect(Collectors.toList());
+        
+        com.code.algonix.problems.dto.SubmissionsListResponse response = 
+                new com.code.algonix.problems.dto.SubmissionsListResponse();
+        response.setSuccess(true);
+        response.setType(type != null ? type.toUpperCase() : "ALL");
+        response.setProblemId(problemId);
+        
+        if (problemId != null) {
+            Problem problem = problemRepository.findById(problemId).orElse(null);
+            response.setProblemTitle(problem != null ? problem.getTitle() : null);
+        }
+        
+        response.setTotalElements(totalElements);
+        response.setTotalPages(totalPages);
+        response.setCurrentPage(page);
+        response.setData(entries);
+        
+        return response;
+    }
 }

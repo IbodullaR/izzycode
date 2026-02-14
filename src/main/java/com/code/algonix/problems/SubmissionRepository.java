@@ -15,6 +15,8 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     List<Submission> findByUserIdOrderBySubmittedAtDesc(Long userId);
     List<Submission> findByProblemIdOrderBySubmittedAtDesc(Long problemId);
     List<Submission> findByUserIdAndProblemId(Long userId, Long problemId);
+    List<Submission> findByUserIdAndProblemIdOrderBySubmittedAtDesc(Long userId, Long problemId);
+    List<Submission> findAllByOrderBySubmittedAtDesc();
     
     // Gamification support
     boolean existsByUserAndProblemAndStatus(UserEntity user, Problem problem, Submission.SubmissionStatus status);
