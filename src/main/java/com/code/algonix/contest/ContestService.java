@@ -905,4 +905,111 @@ public class ContestService {
         long minutes = (seconds % 3600) / 60;
         return String.format("%02d:%02d", hours, minutes);
     }
+    
+    public ContestSubmissionsListResponse getContestSubmissions(
+            Long contestId, String type, String problemCode, Long userId, int page, int size) {
+        
+        Contest contest = contestRepository.findById(contestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contest not found"));
+        
+        List<ContestSubmission> allSubmissions;
+        
+        if ("ME".equalsIgnoreCase(type) && userId != null) {
+            // Faqat o'zining submissionlari
+            allSubmissions = contestSubmissionRepository
+                    .findByContestIdAndUserIdOrderBySubmittedAtDesc(contestId, userId);
+        } else {
+            // Barcha submissionlar
+            allSubmissions = contestSubmissionRepository
+                    .findByContestIdOrderBySubmittedAtDesc(contestId);
+        }
+        
+        // Filter by problem code if specified
+        if (problemCode != null && !problemCode.isEmpty()) {
+            allSubmissions = allSubmissions.stream()
+                    .filter(cs -> cs.getContestProblem().getSymbol().equalsIgnoreCase(problemCode))
+                    .collect(Collectors.toList());
+        }
+        
+        // Pagination
+        long totalElements = allSubmissions.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int start = page * size;
+        int end = Math.min(start + size, allSubmissions.size());
+        
+        List<ContestSubmission> pageSubmissions = start < allSubmissions.size()
+                ? allSubmissions.subList(start, end)
+                : new ArrayList<>();
+        
+        // Map to response
+        List<ContestSubmissionsListResponse.SubmissionEntry> entries = pageSubmissions.stream()
+                .map(cs -> {
+                    ContestSubmissionsListResponse.SubmissionEntry entry = 
+                            new ContestSubmissionsListResponse.SubmissionEntry();
+                    
+                    entry.setId(cs.getId());
+                    entry.setUserId(cs.getUser().getId());
+                    entry.setUsername(cs.getUser().getUsername());
+                    entry.setProblemId(cs.getContestProblem().getProblem().getId());
+                    entry.setProblemCode(cs.getContestProblem().getSymbol());
+                    entry.setProblemTitle(cs.getContestProblem().getProblem().getTitle());
+                    entry.setLanguage(cs.getSubmission().getLanguage());
+                    entry.setStatus(cs.getIsAccepted() ? "Accepted" : cs.getSubmission().getStatus().name());
+                    
+                    // Runtime and memory
+                    if (cs.getSubmission().getRuntime() != null && cs.getSubmission().getRuntime() > 0) {
+                        entry.setRuntime(cs.getSubmission().getRuntime() + "ms");
+                    } else {
+                        entry.setRuntime("—");
+                    }
+                    
+                    if (cs.getSubmission().getMemory() != null && cs.getSubmission().getMemory() > 0) {
+                        entry.setMemory(String.format("%.2fMB", cs.getSubmission().getMemory()));
+                    } else {
+                        entry.setMemory("—");
+                    }
+                    
+                    // Attempt count - shu masalaga nechta urinish qilgan
+                    long attemptCount = contestSubmissionRepository
+                            .countByContestIdAndUserIdAndContestProblemIdAndSubmittedAtLessThanEqual(
+                                    contestId, 
+                                    cs.getUser().getId(), 
+                                    cs.getContestProblem().getId(),
+                                    cs.getSubmittedAt()
+                            );
+                    entry.setAttempt((int) attemptCount);
+                    
+                    // Penalty - noto'g'ri urinishlar uchun
+                    if (cs.getIsAccepted()) {
+                        long wrongAttempts = contestSubmissionRepository
+                                .countByContestIdAndUserIdAndContestProblemIdAndIsAcceptedFalseAndSubmittedAtBefore(
+                                        contestId,
+                                        cs.getUser().getId(),
+                                        cs.getContestProblem().getId(),
+                                        cs.getSubmittedAt()
+                                );
+                        entry.setPenalty((int) (wrongAttempts * 20)); // 20 minut penalty
+                    } else {
+                        entry.setPenalty(0);
+                    }
+                    
+                    entry.setScore(cs.getScore());
+                    entry.setSubmittedAt(cs.getSubmittedAt());
+                    
+                    return entry;
+                })
+                .collect(Collectors.toList());
+        
+        ContestSubmissionsListResponse response = new ContestSubmissionsListResponse();
+        response.setSuccess(true);
+        response.setType(type != null ? type.toUpperCase() : "ALL");
+        response.setContestId(contestId);
+        response.setContestName(contest.getTitle());
+        response.setTotalElements(totalElements);
+        response.setTotalPages(totalPages);
+        response.setCurrentPage(page);
+        response.setData(entries);
+        
+        return response;
+    }
 }

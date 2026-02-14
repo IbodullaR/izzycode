@@ -1,15 +1,18 @@
 package com.code.algonix.contest;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
-
-import java.util.List;
 
 @Repository
 public interface ContestSubmissionRepository extends JpaRepository<ContestSubmission, Long> {
     
     List<ContestSubmission> findByContestIdAndUserIdOrderBySubmittedAtDesc(Long contestId, Long userId);
+    
+    List<ContestSubmission> findByContestIdOrderBySubmittedAtDesc(Long contestId);
     
     List<ContestSubmission> findByContestIdAndContestProblemId(Long contestId, Long contestProblemId);
     
@@ -20,4 +23,10 @@ public interface ContestSubmissionRepository extends JpaRepository<ContestSubmis
     
     boolean existsByContestIdAndUserIdAndContestProblemIdAndIsAcceptedTrue(
             Long contestId, Long userId, Long contestProblemId);
+    
+    long countByContestIdAndUserIdAndContestProblemIdAndSubmittedAtLessThanEqual(
+            Long contestId, Long userId, Long contestProblemId, LocalDateTime submittedAt);
+    
+    long countByContestIdAndUserIdAndContestProblemIdAndIsAcceptedFalseAndSubmittedAtBefore(
+            Long contestId, Long userId, Long contestProblemId, LocalDateTime submittedAt);
 }

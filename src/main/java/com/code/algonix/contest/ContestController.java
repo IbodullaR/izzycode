@@ -21,6 +21,7 @@ import com.code.algonix.contest.dto.ContestRankingsResponse;
 import com.code.algonix.contest.dto.ContestResponse;
 import com.code.algonix.contest.dto.ContestStandingsResponse;
 import com.code.algonix.contest.dto.ContestSubmissionResponse;
+import com.code.algonix.contest.dto.ContestSubmissionsListResponse;
 import com.code.algonix.contest.dto.ContestSubmitRequest;
 import com.code.algonix.contest.dto.CreateContestRequest;
 import com.code.algonix.user.UserEntity;
@@ -136,5 +137,18 @@ public class ContestController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size) {
         return ResponseEntity.ok(contestService.getContestFinalStandings(contestId, page, size));
+    }
+    
+    @GetMapping("/{contestId}/submissions")
+    @Operation(summary = "Get contest submissions list (ALL or ME)")
+    public ResponseEntity<ContestSubmissionsListResponse> getContestSubmissionsList(
+            @PathVariable Long contestId,
+            @RequestParam(defaultValue = "ALL") String type,
+            @RequestParam(required = false) String problemCode,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal UserEntity user) {
+        Long userId = user != null ? user.getId() : null;
+        return ResponseEntity.ok(contestService.getContestSubmissions(contestId, type, problemCode, userId, page, size));
     }
 }
