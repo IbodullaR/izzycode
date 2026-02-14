@@ -151,4 +151,11 @@ public class ContestController {
         Long userId = user != null ? user.getId() : null;
         return ResponseEntity.ok(contestService.getContestSubmissions(contestId, type, problemCode, userId, page, size));
     }
+    
+    @GetMapping("/submissions/{submissionId}")
+    @Operation(summary = "Get contest submission details by ID")
+    public ResponseEntity<ContestSubmissionResponse> getContestSubmissionById(
+            @PathVariable Long submissionId) {
+        return ResponseEntity.ok(contestService.getContestSubmissionById(submissionId));
+    }
 }

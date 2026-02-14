@@ -1012,4 +1012,55 @@ public class ContestService {
         
         return response;
     }
+    
+    public ContestSubmissionResponse getContestSubmissionById(Long submissionId) {
+        ContestSubmission contestSubmission = contestSubmissionRepository.findById(submissionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contest submission not found"));
+        
+        Submission submission = contestSubmission.getSubmission();
+        
+        // Build detailed response
+        ContestSubmissionResponse response = new ContestSubmissionResponse();
+        response.setSubmissionId(submission.getId());
+        response.setContestSubmissionId(contestSubmission.getId());
+        response.setUserId(contestSubmission.getUser().getId());
+        response.setProblemId(contestSubmission.getContestProblem().getProblem().getId());
+        response.setCode(submission.getCode());
+        response.setLanguage(submission.getLanguage());
+        response.setStatus(submission.getStatus().name());
+        response.setIsAccepted(contestSubmission.getIsAccepted());
+        response.setScore(contestSubmission.getScore());
+        response.setTimeTaken(contestSubmission.getTimeTaken());
+        response.setSubmittedAt(contestSubmission.getSubmittedAt());
+        response.setJudgedAt(submission.getJudgedAt());
+        
+        // Map test results
+        List<ContestSubmissionResponse.TestResult> testResults = submission.getTestResults().stream()
+                .map(tr -> {
+                    ContestSubmissionResponse.TestResult result = new ContestSubmissionResponse.TestResult();
+                    result.setTestCaseId(tr.getTestCase().getId());
+                    result.setStatus(tr.getStatus().name());
+                    result.setRuntime(tr.getRuntime() != null ? tr.getRuntime().longValue() : 0L);
+                    result.setMemory(tr.getMemory());
+                    result.setInput(tr.getTestCase().getInput());
+                    result.setExpectedOutput(tr.getTestCase().getExpectedOutput());
+                    result.setActualOutput(tr.getActualOutput());
+                    result.setErrorMessage(tr.getErrorMessage());
+                    return result;
+                })
+                .collect(Collectors.toList());
+        response.setTestResults(testResults);
+        
+        // Overall stats
+        ContestSubmissionResponse.OverallStats stats = new ContestSubmissionResponse.OverallStats();
+        stats.setTotalTestCases(submission.getTotalTestCases());
+        stats.setPassedTestCases(submission.getPassedTestCases());
+        stats.setRuntime(submission.getRuntime() != null ? submission.getRuntime().longValue() : 0L);
+        stats.setRuntimePercentile(submission.getRuntimePercentile());
+        stats.setMemory(submission.getMemory());
+        stats.setMemoryPercentile(submission.getMemoryPercentile());
+        response.setOverallStats(stats);
+        
+        return response;
+    }
 }
