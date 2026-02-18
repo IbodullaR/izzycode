@@ -229,6 +229,53 @@ public class LeaderboardController {
         return ResponseEntity.ok(userRanking);
     }
 
+    @GetMapping("/weekly")
+    @Operation(summary = "Haftalik top foydalanuvchilar (Top Reyting)")
+    public ResponseEntity<LeaderboardResponse> getWeeklyLeaderboard(
+            @RequestParam(defaultValue = "6") int limit) {
+
+        if (limit > 20) limit = 20; // Maksimal 20 ta user
+        if (limit < 3) limit = 3;   // Minimal 3 ta user (top 3)
+
+        Pageable pageable = PageRequest.of(0, limit);
+        
+        // Haftalik eng ko'p yechgan foydalanuvchilarni olish
+        Page<UserStatistics> userStatsPage = userStatisticsRepository.findTopUsersByWeeklyStreak(pageable);
+
+        List<LeaderboardResponse.UserRankingDto> userRankings = IntStream.range(0, userStatsPage.getContent().size())
+                .mapToObj(index -> {
+                    UserStatistics stats = userStatsPage.getContent().get(index);
+                    UserEntity user = stats.getUser();
+                    
+                    return LeaderboardResponse.UserRankingDto.builder()
+                            .userId(user.getId())
+                            .username(user.getUsername())
+                            .email(user.getEmail())
+                            .location("O'zbekiston")
+                            .ranking(index + 1)
+                            .totalSolved(stats.getTotalSolved())
+                            .weeklyStreak(stats.getWeeklyStreak())
+                            .experience(stats.getExperience())
+                            .level(stats.getLevel())
+                            .coins(stats.getCoins())
+                            .currentStreak(stats.getCurrentStreak())
+                            .status(calculateUserStatus(stats.getLastLoginDate()))
+                            .badge(calculateUserBadge(stats))
+                            .build();
+                })
+                .toList();
+
+        LeaderboardResponse response = LeaderboardResponse.builder()
+                .users(userRankings)
+                .total((long) userRankings.size())
+                .page(0)
+                .pageSize(limit)
+                .sortBy("weeklyStreak")
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+
     // Helper metodlar
     private String calculateUserStatus(LocalDate lastLoginDate) {
         if (lastLoginDate == null) {
@@ -262,4 +309,5 @@ public class LeaderboardController {
             return "Beginner";
         }
     }
+
 }

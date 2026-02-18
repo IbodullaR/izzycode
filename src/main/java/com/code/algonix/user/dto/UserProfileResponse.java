@@ -64,6 +64,7 @@ public class UserProfileResponse {
         private Integer hardSolved;
         private Double acceptanceRate;
         private Integer ranking;
+        private Long globalRanking; // Global o'rin (#128)
         private Integer reputation;
         private Integer streakDays;
         private Integer coins;
@@ -75,5 +76,6 @@ public class UserProfileResponse {
         private Integer weeklyStreak;
         private Integer monthlyStreak;
         private LocalDate lastLoginDate;
+        private String badge; // "Beginner", "Expert", "Master", etc.
     }
 }

@@ -34,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 public class UserProfileService {
 
     private final UserRepository userRepository;
+    private final UserStatisticsRepository userStatisticsRepository;
     private final PasswordEncoder passwordEncoder;
     private final ProblemRepository problemRepository;
     private final SubmissionRepository submissionRepository;
@@ -347,6 +348,13 @@ public class UserProfileService {
 
         UserProfileResponse.UserStatisticsDto statisticsDto = null;
         if (stats != null) {
+            // Badge hisoblash
+            String badge = calculateUserBadge(stats);
+            
+            // Global ranking hisoblash
+            Long globalRanking = userStatisticsRepository.getUserRankingByTotalSolved(
+                    stats.getTotalSolved(), stats.getAcceptanceRate());
+            
             statisticsDto = UserProfileResponse.UserStatisticsDto.builder()
                     .totalSolved(stats.getTotalSolved())
                     .beginnerSolved(stats.getBeginnerSolved())
@@ -356,6 +364,7 @@ public class UserProfileService {
                     .hardSolved(stats.getHardSolved())
                     .acceptanceRate(stats.getAcceptanceRate())
                     .ranking(stats.getRanking())
+                    .globalRanking(globalRanking)
                     .reputation(stats.getReputation())
                     .streakDays(stats.getStreakDays())
                     .coins(stats.getCoins())
@@ -367,6 +376,7 @@ public class UserProfileService {
                     .weeklyStreak(stats.getWeeklyStreak())
                     .monthlyStreak(stats.getMonthlyStreak())
                     .lastLoginDate(stats.getLastLoginDate())
+                    .badge(badge)
                     .build();
         }
 
@@ -396,5 +406,22 @@ public class UserProfileService {
                 .updatedAt(user.getUpdatedAt())
                 .statistics(statisticsDto)
                 .build();
+    }
+    
+    private String calculateUserBadge(UserStatistics stats) {
+        int totalSolved = stats.getTotalSolved();
+        int level = stats.getLevel();
+        
+        if (level >= 10 || totalSolved >= 100) {
+            return "Master";
+        } else if (level >= 7 || totalSolved >= 50) {
+            return "Expert";
+        } else if (level >= 5 || totalSolved >= 25) {
+            return "Advanced";
+        } else if (level >= 3 || totalSolved >= 10) {
+            return "Intermediate";
+        } else {
+            return "Beginner";
+        }
     }
 }

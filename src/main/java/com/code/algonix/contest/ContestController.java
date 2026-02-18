@@ -24,6 +24,7 @@ import com.code.algonix.contest.dto.ContestSubmissionResponse;
 import com.code.algonix.contest.dto.ContestSubmissionsListResponse;
 import com.code.algonix.contest.dto.ContestSubmitRequest;
 import com.code.algonix.contest.dto.CreateContestRequest;
+import com.code.algonix.contest.dto.WeeklyContestLeaderboardResponse;
 import com.code.algonix.user.UserEntity;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -157,5 +158,21 @@ public class ContestController {
     public ResponseEntity<ContestSubmissionResponse> getContestSubmissionById(
             @PathVariable Long submissionId) {
         return ResponseEntity.ok(contestService.getContestSubmissionById(submissionId));
+    }
+    
+    @GetMapping("/weekly-leaderboard")
+    @Operation(summary = "Get weekly contest leaderboard (Haftalik peshqadamlar)")
+    public ResponseEntity<WeeklyContestLeaderboardResponse> getWeeklyLeaderboard(
+            @RequestParam(defaultValue = "6") int limit) {
+        return ResponseEntity.ok(contestService.getWeeklyContestLeaderboard(limit));
+    }
+    
+    @GetMapping("/{contestId}/top-participants")
+    @Operation(summary = "Get contest top participants (Contest yakunlanganda)")
+    public ResponseEntity<WeeklyContestLeaderboardResponse> getContestTopParticipants(
+            @PathVariable Long contestId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size) {
+        return ResponseEntity.ok(contestService.getContestTopParticipants(contestId, page, size));
     }
 }

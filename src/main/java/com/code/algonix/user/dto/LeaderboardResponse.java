@@ -42,6 +42,7 @@ public class LeaderboardResponse {
         private Integer coins;
         private Integer currentStreak;
         private Integer longestStreak;
+        private Integer weeklyStreak; // Haftalik streak
         private LocalDate lastLoginDate;
         private String status; // "online", "offline", "away"
         private String badge; // "Beginner", "Expert", "Master", etc.

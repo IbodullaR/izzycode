@@ -26,5 +26,7 @@ public interface ContestParticipantRepository extends JpaRepository<ContestParti
            "ORDER BY cp.registeredAt ASC")
     List<ContestParticipant> findByContestIdOrderByRegisteredAtAsc(Long contestId);
     
+    List<ContestParticipant> findByContestId(Long contestId);
+    
     Long countByContestId(Long contestId);
 }

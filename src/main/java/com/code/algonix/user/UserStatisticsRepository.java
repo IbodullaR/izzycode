@@ -51,4 +51,8 @@ public interface UserStatisticsRepository extends JpaRepository<UserStatistics, 
     // Get user ranking by experience
     @Query("SELECT COUNT(us) + 1 FROM UserStatistics us WHERE us.experience > :experience OR (us.experience = :experience AND us.totalSolved > :totalSolved)")
     Long getUserRankingByExperience(@Param("experience") Integer experience, @Param("totalSolved") Integer totalSolved);
+    
+    // Top users by weekly streak (haftalik peshqadamlar)
+    @Query("SELECT us FROM UserStatistics us JOIN FETCH us.user u WHERE u.role = 'USER' ORDER BY us.weeklyStreak DESC, us.totalSolved DESC")
+    Page<UserStatistics> findTopUsersByWeeklyStreak(Pageable pageable);
 }

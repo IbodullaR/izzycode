@@ -1068,4 +1068,121 @@ public class ContestService {
         
         return response;
     }
+    
+    @Transactional(readOnly = true)
+    public WeeklyContestLeaderboardResponse getWeeklyContestLeaderboard(int limit) {
+        if (limit > 20) limit = 20;
+        if (limit < 3) limit = 3;
+        
+        LocalDateTime weekAgo = LocalDateTime.now().minusDays(7);
+        
+        // Oxirgi 7 kun ichidagi contestlarni olish
+        List<Contest> weeklyContests = contestRepository.findWeeklyContests(weekAgo);
+        
+        if (weeklyContests.isEmpty()) {
+            return WeeklyContestLeaderboardResponse.builder()
+                    .topParticipants(new ArrayList<>())
+                    .totalParticipants(0L)
+                    .period("HAFTALIK PESHQADAMLAR")
+                    .page(0)
+                    .pageSize(limit)
+                    .build();
+        }
+        
+        // Barcha qatnashchilarni yig'ish va ularning ballarini hisoblash
+        Map<Long, WeeklyContestLeaderboardResponse.ParticipantRanking> participantMap = new HashMap<>();
+        
+        for (Contest contest : weeklyContests) {
+            List<ContestParticipant> participants = participantRepository.findByContestId(contest.getId());
+            
+            for (ContestParticipant participant : participants) {
+                Long userId = participant.getUser().getId();
+                
+                participantMap.computeIfAbsent(userId, id -> {
+                    WeeklyContestLeaderboardResponse.ParticipantRanking ranking = 
+                        WeeklyContestLeaderboardResponse.ParticipantRanking.builder()
+                            .userId(userId)
+                            .username(participant.getUser().getUsername())
+                            .totalScore(0)
+                            .contestsParticipated(0)
+                            .problemsSolved(0)
+                            .build();
+                    return ranking;
+                });
+                
+                WeeklyContestLeaderboardResponse.ParticipantRanking ranking = participantMap.get(userId);
+                ranking.setTotalScore(ranking.getTotalScore() + participant.getScore());
+                ranking.setContestsParticipated(ranking.getContestsParticipated() + 1);
+                ranking.setProblemsSolved(ranking.getProblemsSolved() + participant.getProblemsSolved());
+            }
+        }
+        
+        // Ballar bo'yicha tartiblash va top N ni olish
+        List<WeeklyContestLeaderboardResponse.ParticipantRanking> topParticipants = participantMap.values().stream()
+                .sorted((a, b) -> {
+                    int scoreCompare = b.getTotalScore().compareTo(a.getTotalScore());
+                    if (scoreCompare != 0) return scoreCompare;
+                    return b.getProblemsSolved().compareTo(a.getProblemsSolved());
+                })
+                .limit(limit)
+                .collect(Collectors.toList());
+        
+        // Ranking qo'shish
+        for (int i = 0; i < topParticipants.size(); i++) {
+            topParticipants.get(i).setRanking(i + 1);
+        }
+        
+        return WeeklyContestLeaderboardResponse.builder()
+                .topParticipants(topParticipants)
+                .totalParticipants((long) participantMap.size())
+                .period("HAFTALIK PESHQADAMLAR")
+                .page(0)
+                .pageSize(limit)
+                .build();
+    }
+    
+    @Transactional(readOnly = true)
+    public WeeklyContestLeaderboardResponse getContestTopParticipants(Long contestId, int page, int size) {
+        if (size > 50) size = 50;
+        if (size < 3) size = 3;
+        
+        Contest contest = contestRepository.findById(contestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contest not found"));
+        
+        // Contestning barcha qatnashchilarini olish (score bo'yicha tartiblangan)
+        List<ContestParticipant> allParticipants = participantRepository.findContestStandings(contestId);
+        
+        // Pagination
+        int start = page * size;
+        int end = Math.min(start + size, allParticipants.size());
+        
+        List<WeeklyContestLeaderboardResponse.ParticipantRanking> topParticipants = new ArrayList<>();
+        
+        if (start < allParticipants.size()) {
+            List<ContestParticipant> pageParticipants = allParticipants.subList(start, end);
+            
+            for (int i = 0; i < pageParticipants.size(); i++) {
+                ContestParticipant participant = pageParticipants.get(i);
+                
+                WeeklyContestLeaderboardResponse.ParticipantRanking ranking = 
+                    WeeklyContestLeaderboardResponse.ParticipantRanking.builder()
+                        .userId(participant.getUser().getId())
+                        .username(participant.getUser().getUsername())
+                        .ranking(start + i + 1) // Global ranking
+                        .totalScore(participant.getScore())
+                        .problemsSolved(participant.getProblemsSolved())
+                        .build();
+                
+                topParticipants.add(ranking);
+            }
+        }
+        
+        return WeeklyContestLeaderboardResponse.builder()
+                .topParticipants(topParticipants)
+                .totalParticipants((long) allParticipants.size())
+                .period(contest.getTitle())
+                .page(page)
+                .pageSize(size)
+                .build();
+    }
 }
