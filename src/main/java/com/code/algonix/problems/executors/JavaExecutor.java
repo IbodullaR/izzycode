@@ -54,6 +54,7 @@ public class JavaExecutor {
         return """
             import java.util.*;
             import java.util.stream.*;
+            import java.io.*;
             
             %s
             
@@ -62,15 +63,33 @@ public class JavaExecutor {
                     Scanner sc = new Scanner(System.in);
                     Solution solution = new Solution();
                     
-                    if (!sc.hasNext()) {
-                        // No input
-                        Object result = callMethod(solution, "%s", new Object[0]);
-                        System.out.println(formatOutput(result));
-                    } else {
-                        String line = sc.nextLine().trim();
-                        Object result = parseInputAndCall(line, solution, "%s");
+                    // Capture stdout for cases where user uses System.out.println
+                    ByteArrayOutputStream capturedOutput = new ByteArrayOutputStream();
+                    PrintStream originalOut = System.out;
+                    System.setOut(new PrintStream(capturedOutput));
+                    
+                    Object result = null;
+                    try {
+                        if (!sc.hasNext()) {
+                            // No input
+                            result = callMethod(solution, "%s", new Object[0]);
+                        } else {
+                            String line = sc.nextLine().trim();
+                            result = parseInputAndCall(line, solution, "%s");
+                        }
+                    } finally {
+                        // Restore stdout
+                        System.setOut(originalOut);
+                    }
+                    
+                    // Check if there's captured output (user used println)
+                    String captured = capturedOutput.toString().trim();
+                    if (!captured.isEmpty()) {
+                        System.out.println(captured);
+                    } else if (result != null) {
                         System.out.println(formatOutput(result));
                     }
+                    
                     sc.close();
                 }
                 
