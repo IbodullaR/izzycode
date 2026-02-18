@@ -263,16 +263,73 @@ public class JavaExecutor {
      * User kodini Solution class ichiga o'rash
      */
     private String wrapUserCodeInSolutionClass(String userCode) {
-        // Agar user kodi allaqachon class ichida bo'lsa, uni o'zgartirmaslik
+        // Agar user kodi allaqachon class ichida bo'lsa
         if (userCode.contains("class Solution") || userCode.contains("public class")) {
-            return userCode;
+            // Convert non-void methods to void if they don't have return
+            return convertToVoidIfNeeded(userCode);
         }
         
         // Aks holda, Solution class ichiga o'rash
-        return """
+        String wrappedCode = """
             class Solution {
                 %s
             }
             """.formatted(userCode);
+        
+        return convertToVoidIfNeeded(wrappedCode);
+    }
+    
+    /**
+     * Agar return statement yo'q bo'lsa, funksiyani void'ga o'zgartirish
+     */
+    private String convertToVoidIfNeeded(String code) {
+        // Find all methods
+        Pattern methodPattern = Pattern.compile("(public|private|protected)?\\s+(\\w+(?:\\[\\])?(?:<[^>]+>)?)\\s+(\\w+)\\s*\\(([^)]*)\\)\\s*\\{");
+        Matcher matcher = methodPattern.matcher(code);
+        
+        StringBuilder result = new StringBuilder();
+        int lastEnd = 0;
+        
+        while (matcher.find()) {
+            String returnType = matcher.group(2);
+            String methodName = matcher.group(3);
+            int methodStart = matcher.start();
+            int bodyStart = matcher.end();
+            
+            // Find matching closing brace
+            int braceCount = 1;
+            int bodyEnd = bodyStart;
+            while (bodyEnd < code.length() && braceCount > 0) {
+                if (code.charAt(bodyEnd) == '{') braceCount++;
+                else if (code.charAt(bodyEnd) == '}') braceCount--;
+                bodyEnd++;
+            }
+            
+            String methodBody = code.substring(bodyStart, bodyEnd - 1);
+            
+            // Append code before this method
+            result.append(code, lastEnd, methodStart);
+            
+            // Agar return type void emas va method body'da return yo'q bo'lsa, void'ga o'zgartirish
+            if (returnType != null && !returnType.equals("void") && !methodBody.contains("return ")) {
+                // Change return type to void
+                String modifier = matcher.group(1) != null ? matcher.group(1) + " " : "";
+                String params = matcher.group(4);
+                result.append(modifier).append("void ").append(methodName).append("(").append(params).append(") {");
+                result.append(methodBody).append("}");
+            } else {
+                // Keep original
+                result.append(code, methodStart, bodyEnd);
+            }
+            
+            lastEnd = bodyEnd;
+        }
+        
+        // Append remaining code
+        if (lastEnd < code.length()) {
+            result.append(code.substring(lastEnd));
+        }
+        
+        return result.length() > 0 ? result.toString() : code;
     }
 }
