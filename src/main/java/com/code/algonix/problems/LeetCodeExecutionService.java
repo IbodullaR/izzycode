@@ -284,7 +284,13 @@ public class LeetCodeExecutionService implements CodeExecutionService {
      * Output'larni taqqoslash
      */
     private boolean compareOutputs(String expected, String actual) {
-        return expected.equals(actual);
+        if (expected.equals(actual)) return true;
+        // Float comparison: "2.0" == "2", "2.50" == "2.5"
+        try {
+            return Double.parseDouble(expected) == Double.parseDouble(actual);
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
     
     /**
