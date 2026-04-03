@@ -46,14 +46,30 @@ public class JavaScriptExecutor {
             // Input formatini aniqlash va funksiyani chaqirish
             if (input === '') {
                 // No input
+                const _origLog = console.log;
+                let _captured = [];
+                console.log = (...args) => _captured.push(args.join(' '));
                 const result = solution.%s();
-                console.log(result);
+                console.log = _origLog;
+                if (_captured.length > 0) {
+                    console.log(_captured.join('\\n'));
+                } else if (result !== undefined && result !== null) {
+                    console.log(result);
+                }
             } else {
                 // Parse input - array va boshqa parametrlarni qo'llab-quvvatlash
+                const _origLog = console.log;
+                let _captured = [];
+                console.log = (...args) => _captured.push(args.join(' '));
                 const result = parseInputAndCall(input, (parsedArgs) => {
                     return solution.%s(...parsedArgs);
                 });
-                console.log(Array.isArray(result) ? JSON.stringify(result) : result);
+                console.log = _origLog;
+                if (_captured.length > 0) {
+                    console.log(_captured.join('\\n'));
+                } else if (result !== undefined && result !== null) {
+                    console.log(Array.isArray(result) ? JSON.stringify(result) : result);
+                }
             }
             
             function parseInputAndCall(input, callback) {
@@ -130,15 +146,31 @@ public class JavaScriptExecutor {
             
             // Input formatini aniqlash va funksiyani chaqirish
             if (input === '') {
-                // No input
+                // No input - capture any console.log output
+                const _origLog = console.log;
+                let _captured = [];
+                console.log = (...args) => _captured.push(args.join(' '));
                 const result = %s();
-                console.log(result);
+                console.log = _origLog;
+                if (_captured.length > 0) {
+                    console.log(_captured.join('\\n'));
+                } else if (result !== undefined && result !== null) {
+                    console.log(result);
+                }
             } else {
                 // Parse input - array va boshqa parametrlarni qo'llab-quvvatlash
+                const _origLog = console.log;
+                let _captured = [];
+                console.log = (...args) => _captured.push(args.join(' '));
                 const result = parseInputAndCall(input, (parsedArgs) => {
                     return %s(...parsedArgs);
                 });
-                console.log(Array.isArray(result) ? JSON.stringify(result) : result);
+                console.log = _origLog;
+                if (_captured.length > 0) {
+                    console.log(_captured.join('\\n'));
+                } else if (result !== undefined && result !== null) {
+                    console.log(Array.isArray(result) ? JSON.stringify(result) : result);
+                }
             }
             
             function parseInputAndCall(input, callback) {
