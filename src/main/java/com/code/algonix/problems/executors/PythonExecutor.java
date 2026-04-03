@@ -129,14 +129,32 @@ public class PythonExecutor {
                     return str(result)
             
             try:
-                input_line = input().strip()
-                result = parse_input_and_call(input_line, '%s')
-                print(format_output(result))
+                input_line = sys.stdin.readline().strip()
+                import io
+                _old_stdout = sys.stdout
+                sys.stdout = io.StringIO()
+                if input_line == '':
+                    result = getattr(solution, '%s')()
+                else:
+                    result = parse_input_and_call(input_line, '%s')
+                _captured = sys.stdout.getvalue().strip()
+                sys.stdout = _old_stdout
+                if _captured:
+                    print(_captured)
+                elif result is not None:
+                    print(format_output(result))
             except EOFError:
-                # No input
+                import io
+                _old_stdout = sys.stdout
+                sys.stdout = io.StringIO()
                 result = getattr(solution, '%s')()
-                print(format_output(result))
-            """.formatted(wrappedUserCode, functionName, functionName);
+                _captured = sys.stdout.getvalue().strip()
+                sys.stdout = _old_stdout
+                if _captured:
+                    print(_captured)
+                elif result is not None:
+                    print(format_output(result))
+            """.formatted(wrappedUserCode, functionName, functionName, functionName);
     }
     
     /**
@@ -148,10 +166,35 @@ public class PythonExecutor {
             return userCode;
         }
         
-        // Aks holda, Solution class ichiga o'rash - har bir qatorni 4 ta space bilan indent qilish
+        // Har bir def funksiyasiga self parametrini qo'shish
         String[] lines = userCode.split("\n");
-        StringBuilder indentedCode = new StringBuilder();
+        StringBuilder fixedCode = new StringBuilder();
         for (String line : lines) {
+            String trimmed = line.trim();
+            if (trimmed.startsWith("def ") && trimmed.contains("(")) {
+                // def funcName(params) -> def funcName(self, params) yoki def funcName(self)
+                int parenOpen = line.indexOf('(');
+                int parenClose = line.indexOf(')');
+                String beforeParen = line.substring(0, parenOpen + 1);
+                String params = line.substring(parenOpen + 1, parenClose).trim();
+                String afterParen = line.substring(parenClose);
+                
+                if (params.isEmpty()) {
+                    fixedCode.append(beforeParen).append("self").append(afterParen).append("\n");
+                } else if (!params.startsWith("self")) {
+                    fixedCode.append(beforeParen).append("self, ").append(params).append(afterParen).append("\n");
+                } else {
+                    fixedCode.append(line).append("\n");
+                }
+            } else {
+                fixedCode.append(line).append("\n");
+            }
+        }
+        
+        // Har bir qatorni 4 ta space bilan indent qilish
+        String[] fixedLines = fixedCode.toString().split("\n");
+        StringBuilder indentedCode = new StringBuilder();
+        for (String line : fixedLines) {
             if (!line.trim().isEmpty()) {
                 indentedCode.append("    ").append(line).append("\n");
             } else {
