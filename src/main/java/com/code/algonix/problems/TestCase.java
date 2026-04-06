@@ -16,6 +16,7 @@ public class TestCase {
 
     @ManyToOne
     @JoinColumn(name = "problem_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"examples", "testCases", "codeTemplates"})
     private Problem problem;
 
     @Column(columnDefinition = "TEXT")

@@ -26,6 +26,7 @@ public class ProblemExample {
 
     @ManyToOne
     @JoinColumn(name = "problem_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"examples", "testCases", "codeTemplates"})
     private Problem problem;
 
     @Column(length = 10)
