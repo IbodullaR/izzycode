@@ -394,6 +394,23 @@ public class ProblemService {
         problemRepository.deleteById(id);
     }
 
+    @Transactional
+    public Problem updateProblem(Long id, com.code.algonix.problems.dto.CreateProblemRequest request) {
+        Problem problem = problemRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Problem not found: " + id));
+
+        if (request.getTitle() != null) problem.setTitle(request.getTitle());
+        if (request.getDescription() != null) problem.setDescription(request.getDescription());
+        if (request.getDescriptionHtml() != null) problem.setDescriptionHtml(request.getDescriptionHtml());
+        if (request.getDifficulty() != null) problem.setDifficulty(request.getDifficulty());
+        if (request.getCategories() != null) problem.setCategories(request.getCategories());
+        if (request.getTags() != null) problem.setTags(request.getTags());
+        if (request.getHints() != null) problem.setHints(request.getHints());
+        if (request.getConstraints() != null) problem.setConstraints(request.getConstraints());
+
+        return problemRepository.save(problem);
+    }
+
     public com.code.algonix.problems.dto.RunCodeResponse runCode(Long problemId, com.code.algonix.problems.dto.RunCodeRequest request) {
         return runCodeService.runCode(problemId, request);
     }

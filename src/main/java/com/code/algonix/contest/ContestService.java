@@ -67,7 +67,34 @@ public class ContestService {
         
         return mapToResponse(contest, null);
     }
-    
+
+    @Transactional
+    public ContestResponse updateContest(Long contestId, CreateContestRequest request) {
+        Contest contest = contestRepository.findById(contestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contest not found"));
+
+        if (request.getTitle() != null) contest.setTitle(request.getTitle());
+        if (request.getDescription() != null) contest.setDescription(request.getDescription());
+        if (request.getImageUrl() != null) contest.setImageUrl(request.getImageUrl());
+        if (request.getStartTime() != null) contest.setStartTime(request.getStartTime());
+        if (request.getDurationSeconds() != null) contest.setDurationSeconds(request.getDurationSeconds());
+        if (request.getPrizePool() != null) contest.setPrizePool(request.getPrizePool());
+        if (request.getNumber() != null) contest.setNumber(request.getNumber());
+
+        contest = contestRepository.save(contest);
+        return mapToResponse(contest, null);
+    }
+
+    @Transactional
+    public void deleteContest(Long contestId) {
+        Contest contest = contestRepository.findById(contestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contest not found"));
+        contestSubmissionRepository.deleteAll(contestSubmissionRepository.findByContestId(contestId));
+        participantRepository.deleteAll(participantRepository.findByContestId(contestId));
+        contestProblemRepository.deleteAll(contestProblemRepository.findByContestId(contestId));
+        contestRepository.delete(contest);
+    }
+
     public List<ContestResponse> getAllContests(int page, int size, Long userId) {
         List<Contest> contests = contestRepository.findAll();
         contests.forEach(this::updateContestStatus);

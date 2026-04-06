@@ -5,9 +5,12 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -46,6 +49,32 @@ public class ContestController {
     @Operation(summary = "Create new contest", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ContestResponse> createContest(@Valid @RequestBody CreateContestRequest request) {
         return ResponseEntity.ok(contestService.createContest(request));
+    }
+
+    @PutMapping("/{contestId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Update contest (full)", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ContestResponse> updateContest(
+            @PathVariable Long contestId,
+            @Valid @RequestBody CreateContestRequest request) {
+        return ResponseEntity.ok(contestService.updateContest(contestId, request));
+    }
+
+    @PatchMapping("/{contestId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Partial update contest", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ContestResponse> patchContest(
+            @PathVariable Long contestId,
+            @RequestBody CreateContestRequest request) {
+        return ResponseEntity.ok(contestService.updateContest(contestId, request));
+    }
+
+    @DeleteMapping("/{contestId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete contest", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<Void> deleteContest(@PathVariable Long contestId) {
+        contestService.deleteContest(contestId);
+        return ResponseEntity.noContent().build();
     }
     
     @GetMapping

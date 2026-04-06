@@ -277,6 +277,21 @@ public class MessageService {
     public int markAllAsRead(UserEntity user) {
         return messageRepository.markAllAsRead(user);
     }
+
+    @Transactional
+    public boolean deleteMessage(UserEntity user, Long messageId) {
+        return messageRepository.findById(messageId)
+                .filter(m -> m.getUser().getId().equals(user.getId()))
+                .map(m -> { messageRepository.delete(m); return true; })
+                .orElse(false);
+    }
+
+    @Transactional
+    public int deleteAllMessages(UserEntity user) {
+        List<Message> messages = messageRepository.findByUserOrderByCreatedAtDesc(user, org.springframework.data.domain.Pageable.unpaged()).getContent();
+        messageRepository.deleteAll(messages);
+        return messages.size();
+    }
     
     /**
      * System message yaratish

@@ -182,6 +182,16 @@ public class AdminController {
         
         return ResponseEntity.ok(Map.of("message", "User blocked successfully"));
     }
+
+    @DeleteMapping("/users/{userId}")
+    @Operation(summary = "Foydalanuvchini o'chirish", tags = {"Admin-Dashboard-Users"})
+    public ResponseEntity<Map<String, String>> deleteUser(@PathVariable Long userId) {
+        if (!userRepository.existsById(userId)) {
+            return ResponseEntity.notFound().build();
+        }
+        userRepository.deleteById(userId);
+        return ResponseEntity.ok(Map.of("message", "User deleted successfully"));
+    }
     
     /**
      * Barcha masalalarni ko'rish

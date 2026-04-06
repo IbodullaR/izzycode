@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -47,7 +48,7 @@ public class AdminProblemController {
      * Masalani yangilash
      */
     @PutMapping("/{problemId}")
-    @Operation(summary = "Masalani yangilash", tags = {"Admin-Dashboard-Problems"})
+    @Operation(summary = "Masalani yangilash (full)", tags = {"Admin-Dashboard-Problems"})
     public ResponseEntity<Problem> updateProblem(
             @PathVariable Long problemId,
             @RequestBody CreateProblemRequest request) {
@@ -55,19 +56,36 @@ public class AdminProblemController {
         Problem existingProblem = problemRepository.findById(problemId)
                 .orElseThrow(() -> new RuntimeException("Problem not found"));
         
-        // Update fields
         existingProblem.setTitle(request.getTitle());
         existingProblem.setDescription(request.getDescription());
         existingProblem.setDifficulty(request.getDifficulty());
         existingProblem.setCategories(request.getCategories());
         existingProblem.setTags(request.getTags());
         existingProblem.setHints(request.getHints());
-        // timeLimit va memoryLimit default qiymatlar bilan
-        existingProblem.setTimeLimitMs(2000); // 2 seconds
-        existingProblem.setMemoryLimitMb(256); // 256 MB
+        existingProblem.setTimeLimitMs(2000);
+        existingProblem.setMemoryLimitMb(256);
         
         Problem updatedProblem = problemRepository.save(existingProblem);
         return ResponseEntity.ok(updatedProblem);
+    }
+
+    @PatchMapping("/{problemId}")
+    @Operation(summary = "Masalani qisman yangilash", tags = {"Admin-Dashboard-Problems"})
+    public ResponseEntity<Problem> patchProblem(
+            @PathVariable Long problemId,
+            @RequestBody CreateProblemRequest request) {
+
+        Problem existingProblem = problemRepository.findById(problemId)
+                .orElseThrow(() -> new RuntimeException("Problem not found"));
+
+        if (request.getTitle() != null) existingProblem.setTitle(request.getTitle());
+        if (request.getDescription() != null) existingProblem.setDescription(request.getDescription());
+        if (request.getDifficulty() != null) existingProblem.setDifficulty(request.getDifficulty());
+        if (request.getCategories() != null) existingProblem.setCategories(request.getCategories());
+        if (request.getTags() != null) existingProblem.setTags(request.getTags());
+        if (request.getHints() != null) existingProblem.setHints(request.getHints());
+
+        return ResponseEntity.ok(problemRepository.save(existingProblem));
     }
     
     /**

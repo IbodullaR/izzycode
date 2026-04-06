@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -108,5 +109,23 @@ public class MessageController {
                 "🧪 Test xabari", 
                 "Bu test uchun yaratilgan system message. Message tizimi to'g'ri ishlayapti!");
         return ResponseEntity.ok(Map.of("message", "Test system message yaratildi"));
+    }
+
+    @DeleteMapping("/{messageId}")
+    public ResponseEntity<Map<String, String>> deleteMessage(
+            @AuthenticationPrincipal UserEntity user,
+            @PathVariable Long messageId) {
+        boolean success = messageService.deleteMessage(user, messageId);
+        if (success) {
+            return ResponseEntity.ok(Map.of("message", "Xabar o'chirildi"));
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @DeleteMapping
+    public ResponseEntity<Map<String, Object>> deleteAllMessages(@AuthenticationPrincipal UserEntity user) {
+        int deletedCount = messageService.deleteAllMessages(user);
+        return ResponseEntity.ok(Map.of("message", "Barcha xabarlar o'chirildi", "deletedCount", deletedCount));
     }
 }
