@@ -36,6 +36,7 @@ import com.code.algonix.user.UserEntity;
 import com.code.algonix.user.UserRepository;
 import com.code.algonix.user.UserStatisticsRepository;
 
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -55,6 +56,7 @@ public class AdminController {
      * Admin Dashboard - Umumiy statistikalar
      */
     @GetMapping("/dashboard")
+    @Operation(summary = "Umumiy statistikalar", tags = {"Admin-Dashboard"})
     public ResponseEntity<Map<String, Object>> getDashboard() {
         Map<String, Object> dashboard = new HashMap<>();
         
@@ -111,6 +113,7 @@ public class AdminController {
      * Barcha foydalanuvchilarni ko'rish
      */
     @GetMapping("/users")
+    @Operation(summary = "Barcha foydalanuvchilarni ko'rish", tags = {"Admin-Dashboard-Users"})
     public ResponseEntity<Page<AdminUserResponse>> getUsers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -146,6 +149,7 @@ public class AdminController {
      * Foydalanuvchini admin qilish
      */
     @PutMapping("/users/{userId}/make-admin")
+    @Operation(summary = "Foydalanuvchini admin qilish", tags = {"Admin-Dashboard-Users"})
     public ResponseEntity<Map<String, String>> makeUserAdmin(@PathVariable Long userId) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -165,6 +169,7 @@ public class AdminController {
      * Foydalanuvchini block qilish
      */
     @PutMapping("/users/{userId}/block")
+    @Operation(summary = "Foydalanuvchini block qilish", tags = {"Admin-Dashboard-Users"})
     public ResponseEntity<Map<String, String>> blockUser(@PathVariable Long userId) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -182,6 +187,7 @@ public class AdminController {
      * Barcha masalalarni ko'rish
      */
     @GetMapping("/problems")
+    @Operation(summary = "Barcha masalalarni ko'rish", tags = {"Admin-Dashboard-Problems"})
     public ResponseEntity<Page<Problem>> getProblems(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -203,6 +209,7 @@ public class AdminController {
      * Masalani o'chirish
      */
     @DeleteMapping("/problems/{problemId}")
+    @Operation(summary = "Masalani o'chirish", tags = {"Admin-Dashboard-Problems"})
     public ResponseEntity<Map<String, String>> deleteProblem(@PathVariable Long problemId) {
         if (!problemRepository.existsById(problemId)) {
             return ResponseEntity.notFound().build();
@@ -216,6 +223,7 @@ public class AdminController {
      * Oxirgi submissionlar
      */
     @GetMapping("/submissions/recent")
+    @Operation(summary = "Oxirgi submissionlar", tags = {"Admin-Dashboard-Submissions"})
     public ResponseEntity<List<AdminSubmissionResponse>> getRecentSubmissions(
             @RequestParam(defaultValue = "50") int limit) {
         
@@ -242,6 +250,7 @@ public class AdminController {
      * Barcha foydalanuvchilarga system message yuborish
      */
     @PostMapping("/broadcast-message")
+    @Operation(summary = "Barcha foydalanuvchilarga xabar yuborish", tags = {"Admin-Dashboard-Messages"})
     public ResponseEntity<Map<String, String>> broadcastMessage(
             @RequestBody BroadcastMessageRequest request) {
         
@@ -261,6 +270,7 @@ public class AdminController {
      * Platform statistikalari (grafik uchun)
      */
     @GetMapping("/analytics")
+    @Operation(summary = "Platform statistikalari (grafik uchun)", tags = {"Admin-Dashboard"})
     public ResponseEntity<Map<String, Object>> getAnalytics() {
         Map<String, Object> analytics = new HashMap<>();
         
@@ -291,6 +301,7 @@ public class AdminController {
      * Masalalar yaratilish statistikasi (Admin panel uchun)
      */
     @GetMapping("/problems/statistics")
+    @Operation(summary = "Masalalar yaratilish statistikasi", tags = {"Admin-Dashboard-Problems"})
     public ResponseEntity<Map<String, Object>> getProblemStatistics(
             @RequestParam(required = false) Integer year,
             @RequestParam(defaultValue = "monthly") String type) {
@@ -359,6 +370,7 @@ public class AdminController {
      * Masalalar yaratilish grafigi uchun ma'lumotlar
      */
     @GetMapping("/problems/chart-data")
+    @Operation(summary = "Masalalar grafigi uchun ma'lumotlar", tags = {"Admin-Dashboard-Problems"})
     public ResponseEntity<Map<String, Object>> getProblemChartData(
             @RequestParam(required = false) Integer year) {
         
@@ -403,6 +415,7 @@ public class AdminController {
      * Belgilangan oy uchun kunlik masalalar statistikasi
      */
     @GetMapping("/problems/daily-stats")
+    @Operation(summary = "Kunlik masalalar statistikasi", tags = {"Admin-Dashboard-Problems"})
     public ResponseEntity<Map<String, Object>> getDailyProblemStats(
             @RequestParam Integer year,
             @RequestParam Integer month) {
@@ -462,6 +475,7 @@ public class AdminController {
      * Yillik masalalar yaratilish statistikasi (oylik breakdown)
      */
     @GetMapping("/problems/yearly-stats")
+    @Operation(summary = "Yillik masalalar statistikasi", tags = {"Admin-Dashboard-Problems"})
     public ResponseEntity<Map<String, Object>> getYearlyProblemStats(
             @RequestParam(required = false) Integer year) {
         
@@ -506,6 +520,7 @@ public class AdminController {
      * Foydalanuvchilar ro'yxatdan o'tish statistikasi
      */
     @GetMapping("/users/registration-stats")
+    @Operation(summary = "Foydalanuvchilar ro'yxatdan o'tish statistikasi", tags = {"Admin-Dashboard-Users"})
     public ResponseEntity<Map<String, Object>> getUserRegistrationStats(
             @RequestParam(required = false) Integer year,
             @RequestParam(defaultValue = "monthly") String type) {
@@ -574,6 +589,7 @@ public class AdminController {
      * Foydalanuvchilar ro'yxatdan o'tish grafigi uchun ma'lumotlar
      */
     @GetMapping("/users/registration-chart-data")
+    @Operation(summary = "Foydalanuvchilar ro'yxatdan o'tish grafigi", tags = {"Admin-Dashboard-Users"})
     public ResponseEntity<Map<String, Object>> getUserRegistrationChartData(
             @RequestParam(required = false) Integer year) {
         
@@ -634,6 +650,7 @@ public class AdminController {
      * Oy oralig'ini olish (MM.YYYY formatida)
      */
     @GetMapping("/months-range")
+    @Operation(summary = "Oy oralig'ini olish", tags = {"Admin-Dashboard"})
     public ResponseEntity<List<String>> getMonthsRange(
             @RequestParam String startDate,
             @RequestParam(defaultValue = "12") int count) {
@@ -689,6 +706,7 @@ public class AdminController {
      * Yillik yechilgan masalalar statistikasi (oylik breakdown)
      */
     @GetMapping("/submissions/yearly-solved-stats")
+    @Operation(summary = "Yillik yechilgan masalalar statistikasi", tags = {"Admin-Dashboard-Submissions"})
     public ResponseEntity<Map<String, Object>> getYearlySolvedProblemsStats(
             @RequestParam(required = false) Integer year) {
         
@@ -733,6 +751,7 @@ public class AdminController {
      * Kunlik yechilgan masalalar statistikasi
      */
     @GetMapping("/submissions/daily-solved-stats")
+    @Operation(summary = "Kunlik yechilgan masalalar statistikasi", tags = {"Admin-Dashboard-Submissions"})
     public ResponseEntity<Map<String, Object>> getDailySolvedProblemsStats(
             @RequestParam Integer year,
             @RequestParam Integer month) {

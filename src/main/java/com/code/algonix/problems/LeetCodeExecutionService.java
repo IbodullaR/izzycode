@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.code.algonix.problems.executors.CppExecutor;
 import com.code.algonix.problems.executors.JavaExecutor;
 import com.code.algonix.problems.executors.JavaScriptExecutor;
 import com.code.algonix.problems.executors.PhpExecutor;
@@ -39,11 +40,12 @@ public class LeetCodeExecutionService implements CodeExecutionService {
     @Value("${judge.max-output-size:10240}")
     private int maxOutputSize;
 
-    // Language executors - JavaScript, Java, Python va PHP
+    // Language executors - JavaScript, Java, Python, PHP va C++
     private final JavaScriptExecutor javaScriptExecutor;
     private final JavaExecutor javaExecutor;
     private final PythonExecutor pythonExecutor;
     private final PhpExecutor phpExecutor;
+    private final CppExecutor cppExecutor;
 
     @Override
     public ExecutionResult executeCode(String code, String language, List<TestCase> testCases) {
@@ -90,6 +92,7 @@ public class LeetCodeExecutionService implements CodeExecutionService {
             case "java" -> executeWithExecutor(code, testCases, workDir, javaExecutor::executeCode);
             case "python", "py", "python3" -> executeWithExecutor(code, testCases, workDir, pythonExecutor::executeCode);
             case "php" -> executeWithExecutor(code, testCases, workDir, phpExecutor::executeCode);
+            case "cpp", "c++", "c" -> executeWithExecutor(code, testCases, workDir, cppExecutor::executeCode);
             default -> createErrorResult(ExecutionStatus.COMPILE_ERROR, "Unsupported language: " + language + " (JavaScript, Java, Python and PHP supported)");
         };
     }
@@ -263,6 +266,7 @@ public class LeetCodeExecutionService implements CodeExecutionService {
             case "java" -> javaExecutor.wrapFunction(userCode, functionName);
             case "python", "py", "python3" -> pythonExecutor.wrapFunction(userCode, functionName);
             case "php" -> phpExecutor.wrapFunction(userCode, functionName);
+            case "cpp", "c++", "c" -> cppExecutor.wrapFunction(userCode, functionName);
             default -> null;
         };
     }
@@ -276,6 +280,7 @@ public class LeetCodeExecutionService implements CodeExecutionService {
             case "java" -> javaExecutor.extractFunctionName(code);
             case "python", "py", "python3" -> pythonExecutor.extractFunctionName(code);
             case "php" -> phpExecutor.extractFunctionName(code);
+            case "cpp", "c++", "c" -> cppExecutor.extractFunctionName(code);
             default -> "solution";
         };
     }

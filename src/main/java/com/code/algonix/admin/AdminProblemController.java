@@ -1,21 +1,33 @@
 package com.code.algonix.admin;
 
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.code.algonix.problems.Problem;
 import com.code.algonix.problems.ProblemRepository;
 import com.code.algonix.problems.ProblemService;
 import com.code.algonix.problems.dto.CreateProblemRequest;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/admin/problems")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "http://localhost:4200")
 @PreAuthorize("hasRole('ADMIN')")
+@Tag(name = "Admin-Dashboard-Problems", description = "Admin masalalar boshqaruvi")
 public class AdminProblemController {
     
     private final ProblemService problemService;
@@ -25,6 +37,7 @@ public class AdminProblemController {
      * Yangi masala yaratish
      */
     @PostMapping
+    @Operation(summary = "Yangi masala yaratish", tags = {"Admin-Dashboard-Problems"})
     public ResponseEntity<Problem> createProblem(@RequestBody CreateProblemRequest request) {
         Problem problem = problemService.createProblem(request);
         return ResponseEntity.ok(problem);
@@ -34,6 +47,7 @@ public class AdminProblemController {
      * Masalani yangilash
      */
     @PutMapping("/{problemId}")
+    @Operation(summary = "Masalani yangilash", tags = {"Admin-Dashboard-Problems"})
     public ResponseEntity<Problem> updateProblem(
             @PathVariable Long problemId,
             @RequestBody CreateProblemRequest request) {
@@ -60,6 +74,7 @@ public class AdminProblemController {
      * Masala statistikalarini olish
      */
     @GetMapping("/{problemId}/stats")
+    @Operation(summary = "Masala statistikasini olish", tags = {"Admin-Dashboard-Problems"})
     public ResponseEntity<Map<String, Object>> getProblemStats(@PathVariable Long problemId) {
         Problem problem = problemRepository.findById(problemId)
                 .orElseThrow(() -> new RuntimeException("Problem not found"));
@@ -81,6 +96,7 @@ public class AdminProblemController {
      * Masalani publish/unpublish qilish
      */
     @PutMapping("/{problemId}/toggle-publish")
+    @Operation(summary = "Masalani publish/unpublish qilish", tags = {"Admin-Dashboard-Problems"})
     public ResponseEntity<Map<String, String>> togglePublish(@PathVariable Long problemId) {
         Problem problem = problemRepository.findById(problemId)
                 .orElseThrow(() -> new RuntimeException("Problem not found"));

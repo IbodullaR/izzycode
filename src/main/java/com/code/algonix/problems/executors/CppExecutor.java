@@ -22,22 +22,32 @@ public class CppExecutor {
         Path sourceFile = workDir.resolve("solution.cpp");
         Files.writeString(sourceFile, wrappedCode);
 
-        Path executableFile = workDir.resolve("solution");
+        Path executableFile = workDir.resolve("solution.exe");
+
+        // g++ path - MSYS2 ucrt64
+        String gppPath = findGppPath();
 
         // Compile
         ProcessBuilder compileBuilder = new ProcessBuilder(
-                "g++", "-o", executableFile.toString(),
-                sourceFile.toString(), "-std=c++17", "-O2", "-lm"
+                gppPath, "-o", executableFile.toString(),
+                sourceFile.toString(), "-std=c++17", "-O2", "-lm", "-static"
         );
         compileBuilder.directory(workDir.toFile());
         compileBuilder.redirectErrorStream(true);
+        // PATH qo'shish
+        compileBuilder.environment().put("PATH",
+                "C:\\msys64\\ucrt64\\bin;" + System.getenv("PATH"));
 
         Process compileProcess = compileBuilder.start();
-        boolean compileFinished = compileProcess.waitFor(15, TimeUnit.SECONDS);
+        boolean compileFinished = compileProcess.waitFor(30, TimeUnit.SECONDS);
 
         if (!compileFinished || compileProcess.exitValue() != 0) {
+            log.error("C++ compile failed. Exit: {}, Finished: {}",
+                compileProcess.exitValue(), compileFinished);
             return compileProcess;
         }
+
+        log.debug("C++ compiled successfully: {}", executableFile);
 
         // Execute
         ProcessBuilder pb = new ProcessBuilder(executableFile.toString());
@@ -47,6 +57,21 @@ public class CppExecutor {
         return pb.start();
     }
 
+    private String findGppPath() {
+        String[] candidates = {
+            "C:\\msys64\\ucrt64\\bin\\g++.exe",
+            "C:\\msys64\\mingw64\\bin\\g++.exe",
+            "C:\\msys64\\usr\\bin\\g++.exe",
+            "g++"
+        };
+        for (String path : candidates) {
+            if (new java.io.File(path).exists()) {
+                return path;
+            }
+        }
+        return "g++"; // fallback - PATH'dan topadi
+    }
+
     /**
      * C++ funksiyasini universal wrapper bilan o'rash
      * - int, long, double, string, vector, bool turlarini qo'llab-quvvatlaydi
@@ -54,6 +79,9 @@ public class CppExecutor {
      * - Array/vector inputni qo'llab-quvvatlaydi
      */
     public String wrapFunction(String userCode, String functionName) {
+        // return statement yo'q bo'lsa, return type'ni void'ga o'zgartirish
+        String processedCode = convertToVoidIfNeeded(userCode, functionName);
+        
         return """
             #include <iostream>
             #include <vector>
@@ -180,13 +208,22 @@ public class CppExecutor {
             // ============ Main ============
 
             int main() {
+                ios::sync_with_stdio(false);
+                cin.tie(nullptr);
                 Solution solution;
                 string line;
 
-                if (!getline(cin, line) || line.empty()) {
-                    // No input - call with no args
+                // EOF yoki bo'sh input tekshirish
+                if (cin.peek() == EOF || !getline(cin, line) || line.empty()) {
+                    // No input - stdout capture qilish
+                    ostringstream captured;
+                    streambuf* oldBuf = cout.rdbuf(captured.rdbuf());
                     try { printResult(solution.%s()); }
                     catch (...) { solution.%s(); }
+                    cout.rdbuf(oldBuf);
+                    string out = captured.str();
+                    if (!out.empty()) cout << out;
+                    else if (out.empty()) {} // void function - already printed
                     return 0;
                 }
 
@@ -255,7 +292,7 @@ public class CppExecutor {
                 return 0;
             }
             """.formatted(
-                userCode,
+                processedCode,
                 functionName, functionName,   // no-arg calls
                 functionName, functionName,   // single array
                 functionName,                 // double
@@ -299,5 +336,27 @@ public class CppExecutor {
             }
         }
         return "solution";
+    }
+    
+    /**
+     * return statement yo'q bo'lsa, return type'ni void'ga o'zgartirish
+     */
+    private String convertToVoidIfNeeded(String code, String functionName) {
+        // Agar return statement bo'lsa, o'zgartirmaslik
+        if (code.contains("return ")) {
+            return code;
+        }
+        
+        // return type'ni void'ga o'zgartirish
+        // Pattern: "returnType functionName(" -> "void functionName("
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+            "(\\w+(?:<[^>]+>)?(?:\\s*\\*)?\\s+)" + java.util.regex.Pattern.quote(functionName) + "\\s*\\("
+        );
+        java.util.regex.Matcher matcher = pattern.matcher(code);
+        if (matcher.find()) {
+            return code.substring(0, matcher.start()) + "void " + functionName + "(" + code.substring(matcher.end());
+        }
+        
+        return code;
     }
 }
