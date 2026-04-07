@@ -40,4 +40,19 @@ public class SubmissionController {
         String username = authentication.getName();
         return ResponseEntity.ok(submissionService.getUserSubmissions(username));
     }
+
+    @GetMapping
+    @Operation(summary = "Submissionlar ro'yxati (filter bilan)", description = "type=ME|ALL, problemId bo'yicha filter")
+    public ResponseEntity<com.code.algonix.problems.dto.SubmissionsListResponse> getSubmissions(
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) Long problemId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+        Long userId = null;
+        if (authentication != null && "ME".equalsIgnoreCase(type)) {
+            userId = submissionService.getUserIdByUsername(authentication.getName());
+        }
+        return ResponseEntity.ok(submissionService.getSubmissionsList(type, problemId, userId, page, size));
+    }
 }

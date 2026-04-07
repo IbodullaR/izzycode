@@ -8,6 +8,8 @@ import com.code.algonix.problems.dto.SubmissionRequest;
 import com.code.algonix.problems.dto.SubmissionResponse;
 import com.code.algonix.user.UserEntity;
 import com.code.algonix.user.UserRepository;
+import com.code.algonix.user.UserStatistics;
+import com.code.algonix.user.UserStatisticsRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -26,10 +28,12 @@ public class ContestService {
     private final ContestProblemRepository contestProblemRepository;
     private final ContestParticipantRepository participantRepository;
     private final ContestSubmissionRepository contestSubmissionRepository;
+    private final ContestSubmissionUnlockRepository contestSubmissionUnlockRepository;
     private final ProblemRepository problemRepository;
     private final SubmissionRepository submissionRepository;
     private final SubmissionService submissionService;
     private final UserRepository userRepository;
+    private final UserStatisticsRepository userStatisticsRepository;
     private final ObjectMapper objectMapper;
     
     @Transactional
@@ -1045,19 +1049,29 @@ public class ContestService {
         return response;
     }
     
-    public ContestSubmissionResponse getContestSubmissionById(Long submissionId) {
+    public ContestSubmissionResponse getContestSubmissionById(Long submissionId, Long viewerUserId) {
         ContestSubmission contestSubmission = contestSubmissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Contest submission not found"));
-        
+
+        Contest contest = contestSubmission.getContest();
+        updateContestStatus(contest);
+        boolean contestFinished = contest.getStatus() == Contest.ContestStatus.FINISHED;
+
         Submission submission = contestSubmission.getSubmission();
-        
-        // Build detailed response
+        boolean isOwner = viewerUserId != null && contestSubmission.getUser().getId().equals(viewerUserId);
+        boolean unlocked = isOwner || (viewerUserId != null &&
+                contestSubmissionUnlockRepository.existsByUserIdAndContestSubmissionId(viewerUserId, submissionId));
+
+        // Code is visible only if: contest finished AND (owner OR unlocked)
+        boolean codeVisible = contestFinished && (isOwner || unlocked);
+
         ContestSubmissionResponse response = new ContestSubmissionResponse();
         response.setSubmissionId(submission.getId());
         response.setContestSubmissionId(contestSubmission.getId());
         response.setUserId(contestSubmission.getUser().getId());
+        response.setUsername(contestSubmission.getUser().getUsername());
         response.setProblemId(contestSubmission.getContestProblem().getProblem().getId());
-        response.setCode(submission.getCode());
+        response.setCode(codeVisible ? submission.getCode() : null);
         response.setLanguage(submission.getLanguage());
         response.setStatus(submission.getStatus().name());
         response.setIsAccepted(contestSubmission.getIsAccepted());
@@ -1065,8 +1079,11 @@ public class ContestService {
         response.setTimeTaken(contestSubmission.getTimeTaken());
         response.setSubmittedAt(contestSubmission.getSubmittedAt());
         response.setJudgedAt(submission.getJudgedAt());
-        
-        // Map test results
+        response.setContestFinished(contestFinished);
+        response.setCodeVisible(codeVisible);
+        response.setUnlocked(unlocked);
+        response.setUnlockCost(25);
+
         List<ContestSubmissionResponse.TestResult> testResults = submission.getTestResults().stream()
                 .map(tr -> {
                     ContestSubmissionResponse.TestResult result = new ContestSubmissionResponse.TestResult();
@@ -1082,8 +1099,7 @@ public class ContestService {
                 })
                 .collect(Collectors.toList());
         response.setTestResults(testResults);
-        
-        // Overall stats
+
         ContestSubmissionResponse.OverallStats stats = new ContestSubmissionResponse.OverallStats();
         stats.setTotalTestCases(submission.getTotalTestCases());
         stats.setPassedTestCases(submission.getPassedTestCases());
@@ -1092,8 +1108,53 @@ public class ContestService {
         stats.setMemory(submission.getMemory());
         stats.setMemoryPercentile(submission.getMemoryPercentile());
         response.setOverallStats(stats);
-        
+
         return response;
+    }
+
+    /** Unlock a contest submission code for 25 coins (only after contest is FINISHED) */
+    @Transactional
+    public ContestSubmissionResponse unlockContestSubmission(Long submissionId, Long viewerUserId) {
+        ContestSubmission contestSubmission = contestSubmissionRepository.findById(submissionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contest submission not found"));
+
+        Contest contest = contestSubmission.getContest();
+        updateContestStatus(contest);
+
+        if (contest.getStatus() != Contest.ContestStatus.FINISHED) {
+            throw new InvalidInputException("Musobaqa hali tugamagan. Kod faqat musobaqa tugagandan keyin ko'rilishi mumkin.");
+        }
+
+        // Owner doesn't need to pay
+        if (contestSubmission.getUser().getId().equals(viewerUserId)) {
+            return getContestSubmissionById(submissionId, viewerUserId);
+        }
+
+        // Already unlocked?
+        if (contestSubmissionUnlockRepository.existsByUserIdAndContestSubmissionId(viewerUserId, submissionId)) {
+            return getContestSubmissionById(submissionId, viewerUserId);
+        }
+
+        UserEntity viewer = userRepository.findById(viewerUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        UserStatistics stats = viewer.getStatistics();
+        if (stats == null || stats.getCoins() < 25) {
+            int current = stats != null ? stats.getCoins() : 0;
+            throw new InvalidInputException("Yetarli coin yo'q. Kerak: 25, Mavjud: " + current);
+        }
+
+        stats.setCoins(stats.getCoins() - 25);
+        userStatisticsRepository.save(stats);
+
+        ContestSubmissionUnlock unlock = ContestSubmissionUnlock.builder()
+                .user(viewer)
+                .contestSubmission(contestSubmission)
+                .coinsSpent(25)
+                .build();
+        contestSubmissionUnlockRepository.save(unlock);
+
+        return getContestSubmissionById(submissionId, viewerUserId);
     }
     
     @Transactional(readOnly = true)

@@ -214,6 +214,12 @@ public class SubmissionService {
                 .build();
     }
     
+    public Long getUserIdByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"))
+                .getId();
+    }
+
     public com.code.algonix.problems.dto.SubmissionsListResponse getSubmissionsList(
             String type, Long problemId, Long userId, int page, int size) {
         

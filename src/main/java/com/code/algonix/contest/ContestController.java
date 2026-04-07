@@ -185,8 +185,20 @@ public class ContestController {
     @GetMapping("/submissions/{submissionId}")
     @Operation(summary = "Get contest submission details by ID")
     public ResponseEntity<ContestSubmissionResponse> getContestSubmissionById(
-            @PathVariable Long submissionId) {
-        return ResponseEntity.ok(contestService.getContestSubmissionById(submissionId));
+            @PathVariable Long submissionId,
+            @AuthenticationPrincipal UserEntity user) {
+        Long userId = user != null ? user.getId() : null;
+        return ResponseEntity.ok(contestService.getContestSubmissionById(submissionId, userId));
+    }
+
+    @PostMapping("/submissions/{submissionId}/unlock")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Unlock contest submission code for 25 coins (only after contest ends)",
+               security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ContestSubmissionResponse> unlockContestSubmission(
+            @PathVariable Long submissionId,
+            @AuthenticationPrincipal UserEntity user) {
+        return ResponseEntity.ok(contestService.unlockContestSubmission(submissionId, user.getId()));
     }
     
     @GetMapping("/weekly-leaderboard")

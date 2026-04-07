@@ -1,12 +1,11 @@
 package com.code.algonix.contest.dto;
 
-import com.code.algonix.problems.dto.SubmissionResponse;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -15,8 +14,9 @@ public class ContestSubmissionResponse {
     private Long submissionId;
     private Long contestSubmissionId;
     private Long userId;
+    private String username;
     private Long problemId;
-    private String code;
+    private String code;          // null unless unlocked or own submission
     private String language;
     private String status;
     private Boolean isAccepted;
@@ -26,6 +26,12 @@ public class ContestSubmissionResponse {
     private OverallStats overallStats;
     private LocalDateTime submittedAt;
     private LocalDateTime judgedAt;
+
+    // Code visibility
+    private Boolean codeVisible;      // true if viewer can see code
+    private Boolean contestFinished;  // true if contest is FINISHED
+    private Integer unlockCost;       // 25 coins
+    private Boolean unlocked;         // true if viewer has unlocked this submission
     
     @Data
     @NoArgsConstructor
