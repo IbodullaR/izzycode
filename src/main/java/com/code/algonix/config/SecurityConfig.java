@@ -99,6 +99,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/problems/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/problems/**").hasRole("ADMIN")
 
+                        // File serving (avatars etc.) - public
+                        .requestMatchers(HttpMethod.GET, "/api/files/**").permitAll()
+
                         // Submissions + profile
                         .requestMatchers("/api/submissions/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/api/profile/**").authenticated()

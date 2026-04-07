@@ -207,7 +207,6 @@ public class UserProfileService {
                 Path filePath = Paths.get(AVATAR_UPLOAD_DIR).resolve(user.getAvatarFileName());
                 Files.deleteIfExists(filePath);
             } catch (IOException e) {
-                // Log error but don't fail the deletion
                 System.err.println("Failed to delete avatar file: " + e.getMessage());
             }
 
@@ -215,6 +214,27 @@ public class UserProfileService {
             user.setAvatarUrl(null);
             userRepository.save(user);
         }
+    }
+
+    @Transactional
+    public UserProfileResponse setAvatarFromUrl(String username, String url) {
+        UserEntity user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        // Delete old local file if exists
+        if (user.getAvatarFileName() != null) {
+            try {
+                Path old = Paths.get(AVATAR_UPLOAD_DIR).resolve(user.getAvatarFileName());
+                Files.deleteIfExists(old);
+            } catch (IOException e) {
+                System.err.println("Failed to delete old avatar: " + e.getMessage());
+            }
+            user.setAvatarFileName(null);
+        }
+
+        user.setAvatarUrl(url);
+        UserEntity saved = userRepository.save(user);
+        return buildUserProfileResponse(saved, true);
     }
 
     public DifficultyStatsResponse getDifficultyStats(String username) {

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.code.algonix.user.dto.AvatarUrlRequest;
 import com.code.algonix.user.dto.ChangePasswordRequest;
 import com.code.algonix.user.dto.CategoryStatsResponse;
 import com.code.algonix.user.dto.DifficultyStatsResponse;
@@ -91,7 +92,7 @@ public class UserProfileController {
     }
 
     @PostMapping("/me/avatar")
-    @Operation(summary = "Avatar rasmini yuklash")
+    @Operation(summary = "Avatar rasmini yuklash (fayl)")
     public ResponseEntity<UserProfileResponse> uploadAvatar(
             @RequestParam("file") MultipartFile file,
             Authentication authentication) {
@@ -101,6 +102,22 @@ public class UserProfileController {
 
         String username = authentication.getName();
         UserProfileResponse updatedProfile = userProfileService.uploadAvatar(username, file);
+        return ResponseEntity.ok(updatedProfile);
+    }
+
+    @PostMapping("/me/avatar/url")
+    @Operation(summary = "Avatar rasmini URL orqali o'rnatish")
+    public ResponseEntity<UserProfileResponse> setAvatarFromUrl(
+            @RequestParam("file") String fileUrl,
+            Authentication authentication) {
+        if (authentication == null) {
+            return ResponseEntity.status(401).build();
+        }
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        String username = authentication.getName();
+        UserProfileResponse updatedProfile = userProfileService.setAvatarFromUrl(username, fileUrl);
         return ResponseEntity.ok(updatedProfile);
     }
 
