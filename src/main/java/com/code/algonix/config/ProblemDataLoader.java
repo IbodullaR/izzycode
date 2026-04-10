@@ -32,6 +32,7 @@ public class ProblemDataLoader implements CommandLineRunner {
         
         loadProblemsFromFile("problems-beginner.json");
         loadProblemsFromFile("problems-basic.json");
+        loadProblemsFromFile("problems-easy.json");
         loadProblemsFromFile("problems-normal.json");
         loadProblemsFromFile("problems-medium.json");
         loadProblemsFromFile("problems-hard.json");
