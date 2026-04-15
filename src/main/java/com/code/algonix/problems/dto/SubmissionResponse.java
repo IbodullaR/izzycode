@@ -17,15 +17,20 @@ import lombok.NoArgsConstructor;
 public class SubmissionResponse {
     private Long submissionId;
     private Long userId;
+    private String username;
     private Long problemId;
-    private String code;
+    private String code;           // null unless codeVisible=true
     private String language;
     private Submission.SubmissionStatus status;
     private List<TestResultDto> testResults;
     private OverallStats overallStats;
-    private RewardInfo rewardInfo;  // Gamification rewards
+    private RewardInfo rewardInfo;
     private LocalDateTime submittedAt;
     private LocalDateTime judgedAt;
+    // Code visibility
+    private Boolean codeVisible;   // true = ko'rsa bo'ladi (o'z submissioni)
+    private Boolean unlocked;      // true = 25 coin to'lab unlock qilingan
+    private Integer unlockCost;    // 25
 
     @Data
     @Builder

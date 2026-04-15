@@ -34,5 +34,9 @@ public class SubmissionsListResponse {
         private String runtime;
         private String memory;
         private LocalDateTime submittedAt;
+        // Code visibility (contestdagi kabi)
+        private Boolean codeVisible;   // true = ko'rsa bo'ladi
+        private Boolean unlocked;      // true = allaqachon unlock qilingan
+        private Integer unlockCost;    // 25
     }
 }

@@ -1,15 +1,23 @@
 package com.code.algonix.problems;
 
+import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.code.algonix.problems.dto.SubmissionRequest;
 import com.code.algonix.problems.dto.SubmissionResponse;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/submissions")
@@ -30,8 +38,21 @@ public class SubmissionController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Submission natijasini olish")
-    public ResponseEntity<SubmissionResponse> getSubmission(@PathVariable Long id) {
-        return ResponseEntity.ok(submissionService.getSubmission(id));
+    public ResponseEntity<SubmissionResponse> getSubmission(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long viewerUserId = authentication != null
+                ? submissionService.getUserIdByUsername(authentication.getName()) : null;
+        return ResponseEntity.ok(submissionService.getSubmission(id, viewerUserId));
+    }
+
+    @PostMapping("/{id}/unlock")
+    @Operation(summary = "Submission kodini 25 coin evaziga ochish")
+    public ResponseEntity<SubmissionResponse> unlockSubmission(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long viewerUserId = submissionService.getUserIdByUsername(authentication.getName());
+        return ResponseEntity.ok(submissionService.unlockSubmission(id, viewerUserId));
     }
 
     @GetMapping("/my")
@@ -49,10 +70,10 @@ public class SubmissionController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication) {
-        Long userId = null;
-        if (authentication != null && "ME".equalsIgnoreCase(type)) {
-            userId = submissionService.getUserIdByUsername(authentication.getName());
-        }
-        return ResponseEntity.ok(submissionService.getSubmissionsList(type, problemId, userId, page, size));
+        Long userId = authentication != null
+                ? submissionService.getUserIdByUsername(authentication.getName()) : null;
+        // ME bo'lsa faqat o'zini, ALL bo'lsa barcha (lekin codeVisible uchun userId kerak)
+        Long filterUserId = "ME".equalsIgnoreCase(type) ? userId : null;
+        return ResponseEntity.ok(submissionService.getSubmissionsList(type, problemId, filterUserId, userId, page, size));
     }
 }

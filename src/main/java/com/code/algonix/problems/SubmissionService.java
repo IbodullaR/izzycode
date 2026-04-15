@@ -27,6 +27,8 @@ public class SubmissionService {
     private final UserRepository userRepository;
     private final RewardService rewardService;
     private final LeetCodeExecutionService leetCodeExecutionService;
+    private final SubmissionUnlockRepository submissionUnlockRepository;
+    private final com.code.algonix.user.UserStatisticsRepository userStatisticsRepository;
 
     @Transactional
     public SubmissionResponse submitCode(SubmissionRequest request, String username) {
@@ -167,6 +169,50 @@ public class SubmissionService {
         return mapToSubmissionResponse(submission);
     }
 
+    public SubmissionResponse getSubmission(Long id, Long viewerUserId) {
+        Submission submission = submissionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Submission not found"));
+        return mapToSubmissionResponse(submission, viewerUserId);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public SubmissionResponse unlockSubmission(Long submissionId, Long viewerUserId) {
+        Submission submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Submission not found"));
+
+        // Owner — bepul
+        if (submission.getUser().getId().equals(viewerUserId)) {
+            return mapToSubmissionResponse(submission, viewerUserId);
+        }
+
+        // Allaqachon unlock qilingan
+        if (submissionUnlockRepository.existsByUserIdAndSubmissionId(viewerUserId, submissionId)) {
+            return mapToSubmissionResponse(submission, viewerUserId);
+        }
+
+        UserEntity viewer = userRepository.findById(viewerUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        com.code.algonix.user.UserStatistics stats = viewer.getStatistics();
+        if (stats == null || stats.getCoins() < 25) {
+            int current = stats != null ? stats.getCoins() : 0;
+            throw new com.code.algonix.exception.InvalidInputException(
+                    "Yetarli coin yo'q. Kerak: 25, Mavjud: " + current);
+        }
+
+        stats.setCoins(stats.getCoins() - 25);
+        userStatisticsRepository.save(stats);
+
+        SubmissionUnlock unlock = SubmissionUnlock.builder()
+                .user(viewer)
+                .submission(submission)
+                .coinsSpent(25)
+                .build();
+        submissionUnlockRepository.save(unlock);
+
+        return mapToSubmissionResponse(submission, viewerUserId);
+    }
+
     public List<SubmissionResponse> getUserSubmissions(String username) {
         UserEntity user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -178,6 +224,15 @@ public class SubmissionService {
     }
 
     private SubmissionResponse mapToSubmissionResponse(Submission submission) {
+        return mapToSubmissionResponse(submission, null);
+    }
+
+    private SubmissionResponse mapToSubmissionResponse(Submission submission, Long viewerUserId) {
+        boolean isOwner = viewerUserId != null && submission.getUser().getId().equals(viewerUserId);
+        boolean unlocked = isOwner || (viewerUserId != null &&
+                submissionUnlockRepository.existsByUserIdAndSubmissionId(viewerUserId, submission.getId()));
+        boolean codeVisible = isOwner || unlocked;
+
         List<SubmissionResponse.TestResultDto> testResults = submission.getTestResults().stream()
                 .map(tr -> SubmissionResponse.TestResultDto.builder()
                         .testCaseId(tr.getTestCase() != null ? tr.getTestCase().getId() : null)
@@ -203,14 +258,18 @@ public class SubmissionService {
         return SubmissionResponse.builder()
                 .submissionId(submission.getId())
                 .userId(submission.getUser().getId())
+                .username(submission.getUser().getUsername())
                 .problemId(submission.getProblem().getId())
-                .code(submission.getCode())
+                .code(codeVisible ? submission.getCode() : null)
                 .language(submission.getLanguage())
                 .status(submission.getStatus())
                 .testResults(testResults)
                 .overallStats(stats)
                 .submittedAt(submission.getSubmittedAt())
                 .judgedAt(submission.getJudgedAt())
+                .codeVisible(codeVisible)
+                .unlocked(unlocked)
+                .unlockCost(25)
                 .build();
     }
     
@@ -221,21 +280,19 @@ public class SubmissionService {
     }
 
     public com.code.algonix.problems.dto.SubmissionsListResponse getSubmissionsList(
-            String type, Long problemId, Long userId, int page, int size) {
+            String type, Long problemId, Long filterUserId, Long viewerUserId, int page, int size) {
         
         List<Submission> allSubmissions;
         
-        if ("ME".equalsIgnoreCase(type) && userId != null) {
-            // Faqat o'zining submissionlari
+        if ("ME".equalsIgnoreCase(type) && filterUserId != null) {
             if (problemId != null) {
                 allSubmissions = submissionRepository
-                        .findByUserIdAndProblemIdOrderBySubmittedAtDesc(userId, problemId);
+                        .findByUserIdAndProblemIdOrderBySubmittedAtDesc(filterUserId, problemId);
             } else {
                 allSubmissions = submissionRepository
-                        .findByUserIdOrderBySubmittedAtDesc(userId);
+                        .findByUserIdOrderBySubmittedAtDesc(filterUserId);
             }
         } else {
-            // Barcha submissionlar
             if (problemId != null) {
                 allSubmissions = submissionRepository
                         .findByProblemIdOrderBySubmittedAtDesc(problemId);
@@ -284,7 +341,15 @@ public class SubmissionService {
                     }
                     
                     entry.setSubmittedAt(s.getSubmittedAt());
-                    
+
+                    // Code visibility — ME bo'lsa o'z kodi ko'rinadi, ALL bo'lsa yashirin
+                    boolean isOwner = viewerUserId != null && s.getUser().getId().equals(viewerUserId);
+                    boolean unlocked = isOwner || (viewerUserId != null &&
+                            submissionUnlockRepository.existsByUserIdAndSubmissionId(viewerUserId, s.getId()));
+                    entry.setCodeVisible(isOwner || unlocked);
+                    entry.setUnlocked(unlocked);
+                    entry.setUnlockCost(25);
+
                     return entry;
                 })
                 .collect(Collectors.toList());
