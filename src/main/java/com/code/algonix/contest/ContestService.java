@@ -102,15 +102,18 @@ public class ContestService {
     public List<ContestResponse> getAllContests(int page, int size, Long userId) {
         List<Contest> contests = contestRepository.findAll();
         contests.forEach(this::updateContestStatus);
-        
+
+        // Yangi contestlar birinchi — startTime bo'yicha kamayish tartibida
+        contests.sort((a, b) -> b.getStartTime().compareTo(a.getStartTime()));
+
         // Apply pagination
         int start = page * size;
         int end = Math.min(start + size, contests.size());
-        
+
         if (start >= contests.size()) {
             return new ArrayList<>();
         }
-        
+
         return contests.subList(start, end).stream()
                 .map(c -> mapToResponse(c, userId))
                 .collect(Collectors.toList());
