@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -95,7 +96,18 @@ public class ProblemService {
             problem.setTestCases(testCases);
         }
 
-        return problemRepository.save(problem);
+        Problem saved = problemRepository.save(problem);
+        reassignGlobalSequenceNumbers();
+        return saved;
+    }
+
+    @Transactional
+    public void reassignGlobalSequenceNumbers() {
+        List<Problem> allProblems = problemRepository.findAll(Sort.by(Sort.Direction.ASC, "id"));
+        for (int i = 0; i < allProblems.size(); i++) {
+            allProblems.get(i).setGlobalSequenceNumber(i + 1);
+        }
+        problemRepository.saveAll(allProblems);
     }
 
     public ProblemListResponse getAllProblems(int page, int size) {
@@ -111,7 +123,7 @@ public class ProblemService {
     }
     
     public ProblemListResponse getAllProblems(int page, int size, Problem.Difficulty difficulty, List<String> categories, String username, String search) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "globalSequenceNumber"));
         Page<Problem> problemPage;
         
         // Check if search is for sequence number (numeric)
@@ -213,7 +225,7 @@ public class ProblemService {
 
     public ProblemListResponse getAllProblemsForUser(int page, int size, String username, 
                                                    Problem.Difficulty difficulty, List<String> categories, String search) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "globalSequenceNumber"));
         Page<Problem> problemPage;
         
         // Check if search is for sequence number (numeric)
