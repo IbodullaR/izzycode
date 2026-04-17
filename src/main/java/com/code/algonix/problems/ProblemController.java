@@ -196,32 +196,4 @@ public class ProblemController {
             return ResponseEntity.ok(response);
         }
     }
-
-    // ---- Translation endpoints ----
-
-    @GetMapping("/{id}/translations")
-    @Operation(summary = "Masala tarjimalarini olish")
-    public ResponseEntity<List<com.code.algonix.problems.dto.ProblemTranslationResponse>> getTranslations(
-            @PathVariable Long id) {
-        return ResponseEntity.ok(problemService.getTranslations(id));
-    }
-
-    @PostMapping("/{id}/translations")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Masalaga tarjima qo'shish yoki yangilash", description = "Faqat ADMIN")
-    public ResponseEntity<com.code.algonix.problems.dto.ProblemTranslationResponse> saveTranslation(
-            @PathVariable Long id,
-            @RequestBody com.code.algonix.problems.dto.ProblemTranslationRequest request) {
-        return ResponseEntity.ok(problemService.saveTranslation(id, request));
-    }
-
-    @DeleteMapping("/{id}/translations/{lang}")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Masala tarjimasini o'chirish", description = "Faqat ADMIN")
-    public ResponseEntity<Void> deleteTranslation(
-            @PathVariable Long id,
-            @PathVariable String lang) {
-        problemService.deleteTranslation(id, lang);
-        return ResponseEntity.noContent().build();
-    }
 }
