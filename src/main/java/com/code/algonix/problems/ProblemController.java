@@ -60,14 +60,22 @@ public class ProblemController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Masalani ID bo'yicha olish")
-    public ResponseEntity<ProblemDetailResponse> getProblemById(@PathVariable Long id) {
-        return ResponseEntity.ok(problemService.getProblemById(id));
+    public ResponseEntity<ProblemDetailResponse> getProblemById(
+            @PathVariable Long id,
+            @RequestParam(required = false) String lang) {
+        return ResponseEntity.ok(lang != null
+                ? problemService.getProblemById(id, lang)
+                : problemService.getProblemById(id));
     }
 
     @GetMapping("/slug/{slug}")
     @Operation(summary = "Masalani slug bo'yicha olish")
-    public ResponseEntity<ProblemDetailResponse> getProblemBySlug(@PathVariable String slug) {
-        return ResponseEntity.ok(problemService.getProblemBySlug(slug));
+    public ResponseEntity<ProblemDetailResponse> getProblemBySlug(
+            @PathVariable String slug,
+            @RequestParam(required = false) String lang) {
+        return ResponseEntity.ok(lang != null
+                ? problemService.getProblemBySlug(slug, lang)
+                : problemService.getProblemBySlug(slug));
     }
 
     @PostMapping
@@ -187,5 +195,33 @@ public class ProblemController {
             
             return ResponseEntity.ok(response);
         }
+    }
+
+    // ---- Translation endpoints ----
+
+    @GetMapping("/{id}/translations")
+    @Operation(summary = "Masala tarjimalarini olish")
+    public ResponseEntity<List<com.code.algonix.problems.dto.ProblemTranslationResponse>> getTranslations(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(problemService.getTranslations(id));
+    }
+
+    @PostMapping("/{id}/translations")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Masalaga tarjima qo'shish yoki yangilash", description = "Faqat ADMIN")
+    public ResponseEntity<com.code.algonix.problems.dto.ProblemTranslationResponse> saveTranslation(
+            @PathVariable Long id,
+            @RequestBody com.code.algonix.problems.dto.ProblemTranslationRequest request) {
+        return ResponseEntity.ok(problemService.saveTranslation(id, request));
+    }
+
+    @DeleteMapping("/{id}/translations/{lang}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Masala tarjimasini o'chirish", description = "Faqat ADMIN")
+    public ResponseEntity<Void> deleteTranslation(
+            @PathVariable Long id,
+            @PathVariable String lang) {
+        problemService.deleteTranslation(id, lang);
+        return ResponseEntity.noContent().build();
     }
 }

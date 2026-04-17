@@ -15,6 +15,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.code.algonix.problems.dto.ProblemTranslationRequest;
+import com.code.algonix.problems.dto.ProblemTranslationResponse;
 import com.code.algonix.exception.ResourceNotFoundException;
 import com.code.algonix.problems.dto.CreateProblemRequest;
 import com.code.algonix.problems.dto.ProblemDetailResponse;
@@ -34,6 +36,7 @@ public class ProblemService {
     private final UserRepository userRepository;
     private final FavouriteRepository favouriteRepository;
     private final CodeTemplateService codeTemplateService;
+    private final ProblemTranslationRepository translationRepository;
 
     @Transactional
     public Problem createProblem(CreateProblemRequest request) {
@@ -338,25 +341,31 @@ public class ProblemService {
     public ProblemDetailResponse getProblemBySlug(String slug) {
         Problem problem = problemRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Problem not found: " + slug));
+        return mapToProblemDetailResponse(problem, null);
+    }
 
-        return mapToProblemDetailResponse(problem);
+    public ProblemDetailResponse getProblemBySlug(String slug, String lang) {
+        Problem problem = problemRepository.findBySlug(slug)
+                .orElseThrow(() -> new ResourceNotFoundException("Problem not found: " + slug));
+        return mapToProblemDetailResponse(problem, lang);
     }
 
     public ProblemDetailResponse getProblemById(Long id) {
         Problem problem = problemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Problem not found: " + id));
-
-        return mapToProblemDetailResponse(problem);
+        return mapToProblemDetailResponse(problem, null);
     }
 
-    private ProblemDetailResponse mapToProblemDetailResponse(Problem problem) {
-        // Code template'larni olish
+    public ProblemDetailResponse getProblemById(Long id, String lang) {
+        Problem problem = problemRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Problem not found: " + id));
+        return mapToProblemDetailResponse(problem, lang);
+    }
+
+    private ProblemDetailResponse mapToProblemDetailResponse(Problem problem, String lang) {
         List<CodeTemplate> templates = codeTemplateService.getTemplatesForProblem(problem.getId());
         Map<String, String> codeTemplates = templates.stream()
-            .collect(Collectors.toMap(
-                CodeTemplate::getLanguage,
-                CodeTemplate::getCode
-            ));
+            .collect(Collectors.toMap(CodeTemplate::getLanguage, CodeTemplate::getCode));
 
         List<ProblemDetailResponse.ExampleDto> examples = problem.getExamples().stream()
                 .map(ex -> ProblemDetailResponse.ExampleDto.builder()
@@ -369,10 +378,26 @@ public class ProblemService {
                         .build())
                 .collect(Collectors.toList());
 
+        // Apply translation if lang provided
+        String title = problem.getTitle();
+        String description = problem.getDescription();
+        String descriptionHtml = problem.getDescriptionHtml();
+
+        if (lang != null && !lang.isBlank()) {
+            ProblemTranslation translation = translationRepository
+                    .findByProblemIdAndLanguage(problem.getId(), lang.toLowerCase())
+                    .orElse(null);
+            if (translation != null) {
+                title = translation.getTitle();
+                description = translation.getDescription() != null ? translation.getDescription() : description;
+                descriptionHtml = translation.getDescriptionHtml() != null ? translation.getDescriptionHtml() : descriptionHtml;
+            }
+        }
+
         return ProblemDetailResponse.builder()
                 .id(problem.getId())
                 .slug(problem.getSlug())
-                .title(problem.getTitle())
+                .title(title)
                 .difficulty(problem.getDifficulty())
                 .categories(problem.getCategories())
                 .tags(problem.getTags())
@@ -381,8 +406,8 @@ public class ProblemService {
                 .acceptanceRate(problem.getAcceptanceRate())
                 .totalSubmissions(problem.getTotalSubmissions())
                 .totalAccepted(problem.getTotalAccepted())
-                .description(problem.getDescription())
-                .descriptionHtml(problem.getDescriptionHtml())
+                .description(description)
+                .descriptionHtml(descriptionHtml)
                 .examples(examples)
                 .constraints(problem.getConstraints())
                 .hints(problem.getHints())
@@ -395,6 +420,46 @@ public class ProblemService {
                 .memoryLimitMb(problem.getMemoryLimitMb() != null ? problem.getMemoryLimitMb() : 512)
                 .createdAt(problem.getCreatedAt())
                 .updatedAt(problem.getUpdatedAt())
+                .build();
+    }
+
+    // ---- Translation CRUD ----
+
+    @Transactional
+    public ProblemTranslationResponse saveTranslation(Long problemId, ProblemTranslationRequest req) {
+        Problem problem = problemRepository.findById(problemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Problem not found: " + problemId));
+
+        ProblemTranslation translation = translationRepository
+                .findByProblemIdAndLanguage(problemId, req.getLanguage().toLowerCase())
+                .orElse(ProblemTranslation.builder().problem(problem).language(req.getLanguage().toLowerCase()).build());
+
+        translation.setTitle(req.getTitle());
+        translation.setDescription(req.getDescription());
+        translation.setDescriptionHtml(req.getDescriptionHtml());
+        translation = translationRepository.save(translation);
+
+        return toTranslationResponse(translation);
+    }
+
+    public List<ProblemTranslationResponse> getTranslations(Long problemId) {
+        return translationRepository.findByProblemId(problemId)
+                .stream().map(this::toTranslationResponse).toList();
+    }
+
+    @Transactional
+    public void deleteTranslation(Long problemId, String lang) {
+        translationRepository.deleteByProblemIdAndLanguage(problemId, lang.toLowerCase());
+    }
+
+    private ProblemTranslationResponse toTranslationResponse(ProblemTranslation t) {
+        return ProblemTranslationResponse.builder()
+                .id(t.getId())
+                .problemId(t.getProblem().getId())
+                .language(t.getLanguage())
+                .title(t.getTitle())
+                .description(t.getDescription())
+                .descriptionHtml(t.getDescriptionHtml())
                 .build();
     }
 
