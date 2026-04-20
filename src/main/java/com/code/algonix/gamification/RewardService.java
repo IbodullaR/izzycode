@@ -1,5 +1,7 @@
 package com.code.algonix.gamification;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,7 @@ public class RewardService {
     private final UserStatisticsRepository userStatisticsRepository;
     private final SubmissionRepository submissionRepository;
     private final MessageService messageService;
+    private final BadgeService badgeService;
 
     // Reward constants
     private static final int BEGINNER_COINS = 1;
@@ -101,6 +104,9 @@ public class RewardService {
 
         // Save statistics
         userStatisticsRepository.save(stats);
+
+        // Badge larni tekshirish va berish
+        List<Badge> newBadges = badgeService.checkAndAwardBadges(user, problem, submission);
 
         // Message yaratish
         messageService.createProblemSolvedMessage(user, problem, coinsEarned, xpEarned, newLevel, leveledUp);
