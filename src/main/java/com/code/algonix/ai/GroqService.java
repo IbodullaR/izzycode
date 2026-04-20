@@ -62,8 +62,8 @@ public class GroqService {
             return root.path("choices").get(0).path("message").path("content").asText();
 
         } catch (Exception e) {
-            log.error("Groq API error: {}", e.getMessage());
-            return "AI xizmatida xato yuz berdi. Keyinroq urinib ko'ring.";
+            log.error("Groq API error: {} - {}", e.getClass().getSimpleName(), e.getMessage());
+            return "AI xizmatida xato yuz berdi: " + e.getMessage();
         }
     }
 }
