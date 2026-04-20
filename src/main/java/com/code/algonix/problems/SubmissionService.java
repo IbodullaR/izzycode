@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.code.algonix.daily.DailyChallengeService;
 import com.code.algonix.exception.ResourceNotFoundException;
 import com.code.algonix.gamification.RewardResult;
 import com.code.algonix.gamification.RewardService;
@@ -26,6 +27,7 @@ public class SubmissionService {
     private final ProblemRepository problemRepository;
     private final UserRepository userRepository;
     private final RewardService rewardService;
+    private final DailyChallengeService dailyChallengeService;
     private final LeetCodeExecutionService leetCodeExecutionService;
     private final SubmissionUnlockRepository submissionUnlockRepository;
     private final com.code.algonix.user.UserStatisticsRepository userStatisticsRepository;
@@ -151,6 +153,8 @@ public class SubmissionService {
                     problem, 
                     submission
                 );
+                // Daily challenge bonus
+                dailyChallengeService.checkDailyChallenge(submission.getUser(), problem, submission);
             }
 
         } catch (Exception e) {
