@@ -55,6 +55,10 @@ public class ProblemDataLoader implements CommandLineRunner {
             
             for (CreateProblemRequest problem : problems) {
                 try {
+                    if (problemRepository.existsBySlug(problem.getSlug())) {
+                        log.debug("⟳ Skipping existing problem: {}", problem.getTitle());
+                        continue;
+                    }
                     problemService.createProblem(problem);
                     log.info("✔ Loaded problem: {}", problem.getTitle());
                 } catch (Exception e) {
@@ -63,7 +67,7 @@ public class ProblemDataLoader implements CommandLineRunner {
             }
             
         } catch (IOException e) {
-            log.error("✗ Failed to load problems from {}: {}", filename, e.getMessage());
+            log.warn("⟳ Skipping missing file: {}", filename);
         }
     }
     
