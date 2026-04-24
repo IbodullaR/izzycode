@@ -22,7 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class GroqService {
 
-    @Value("${groq.api.key}")
+    @Value("${groq.api.key:}")
     private String apiKey;
 
     @Value("${groq.api.url}")
@@ -34,7 +34,7 @@ public class GroqService {
     private final ObjectMapper objectMapper;
 
     public String chat(String systemPrompt, String userMessage) {
-        if (apiKey.equals("your-groq-api-key-here")) {
+        if (apiKey == null || apiKey.isBlank() || apiKey.equals("your-groq-api-key-here")) {
             return "AI xizmati sozlanmagan. Groq API key kerak.";
         }
 

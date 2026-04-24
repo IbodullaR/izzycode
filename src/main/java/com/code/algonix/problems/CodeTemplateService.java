@@ -1,17 +1,19 @@
 package com.code.algonix.problems;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.stereotype.Service;
-
-import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
@@ -30,6 +32,10 @@ public class CodeTemplateService {
     public void loadTemplates() {
         try {
             ClassPathResource resource = new ClassPathResource("code-templates.json");
+            if (!resource.exists()) {
+                log.warn("code-templates.json not found, skipping template load");
+                return;
+            }
             
             TypeReference<List<Map<String, Object>>> typeRef = new TypeReference<>() {};
             List<Map<String, Object>> templateData = objectMapper.readValue(resource.getInputStream(), typeRef);
