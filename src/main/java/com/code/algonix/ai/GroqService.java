@@ -25,10 +25,10 @@ public class GroqService {
     @Value("${groq.api.key:}")
     private String apiKey;
 
-    @Value("${groq.api.url}")
+    @Value("${groq.api.url:https://api.groq.com/openai/v1/chat/completions}")
     private String apiUrl;
 
-    @Value("${groq.api.model}")
+    @Value("${groq.api.model:llama-3.3-70b-versatile}")
     private String model;
 
     private final ObjectMapper objectMapper;
